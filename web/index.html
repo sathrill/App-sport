@@ -51,6 +51,24 @@
 .lv-foot button{flex:1;min-height:54px;border-radius:12px;font-weight:700;font-size:17px}
 .lv-ban{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--forest);color:var(--on);border-radius:12px;padding:10px 12px;margin-bottom:14px}
 .lv-ban span{flex:1 1 12em}.lv-ban:empty{display:none}
+.exfig{background:var(--panel);border-radius:14px;padding:6px;margin:0 auto 10px;max-width:340px}
+.exfig svg{display:block;width:100%;height:auto}
+.exfig .nr{stroke:var(--ink);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.exfig .far{stroke:var(--mute);stroke-width:4;stroke-linecap:round;fill:none;opacity:.75}
+.exfig .hd{fill:var(--bg);stroke:var(--ink);stroke-width:4}
+.exfig .pr{stroke:var(--mute);stroke-width:2;fill:none}.exfig .prf{fill:color-mix(in srgb,var(--mute) 25%,transparent);stroke:var(--mute);stroke-width:1.5}
+.exfig .bd{stroke:var(--acc);stroke-width:2.5;fill:none;stroke-dasharray:4 3}.exfig .db{stroke:var(--ink);stroke-width:6;stroke-linecap:round;fill:none}
+.lv-ex{text-align:left}.lv-ex h3{font-size:24px;margin:0 0 4px}.lv-ex ul{margin:6px 0 8px;padding-left:20px}.lv-ex li{margin:3px 0}
+.lv-ex .lab{font-size:13px;color:var(--mute);font-weight:600}
+.mat{display:flex;flex-direction:column;gap:6px;margin-top:8px;text-align:left}
+.mat label{display:flex;gap:10px;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font-weight:500;color:var(--ink);margin:0;font-size:16px}
+.mat input{width:22px;height:22px;accent-color:var(--acc)}
+.kg{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.kg label{display:flex;gap:8px;align-items:center;min-height:44px;margin:0;color:var(--ink);font-size:16px}
+.kg input[type=checkbox]{width:24px;height:24px;accent-color:var(--acc)}
+.kg button{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:700 24px 'Barlow Condensed'}
+.kg input#lvkg{width:5.2em;text-align:center;font:700 22px 'Barlow Condensed'}
+.item .mt{font-size:13px;margin-top:2px}
 .card h3{font-size:22px;margin-bottom:6px}
 :root{color-scheme:light dark;
 --bg:light-dark(#ffffff,#0e1512);--panel:light-dark(#f1f4f0,#17211c);--line:light-dark(#dde4dd,#2a3830);
@@ -303,16 +321,18 @@ nav a.on{opacity:1;background:rgba(255,255,255,.12)}
   <div class="lv-top"><button class="ib" data-lv="min" aria-label="Réduire">✕</button><h2 id="lvt"></h2><span class="lv-el" id="lvel">0:00</span></div>
   <div class="lv-main">
     <div class="lv-card" id="lvcard"></div>
+    <div id="lvex"></div>
     <div id="lvclimb"></div>
     <details class="lv-info" id="lvinfo"><summary>Consignes</summary><div id="lvinfotxt"></div></details>
     <div class="lv-list" id="lvlist"></div>
     <div class="lv-row" id="lvplan"></div>
   </div>
-  <div class="lv-foot" id="lvfoot"><button class="btn" data-lv="pause" id="lvpause">Pause</button><button class="btn p" data-lv="finish">Terminer</button></div>
+  <div class="lv-foot" id="lvfoot"><button class="btn" data-lv="cancel">Annuler</button><button class="btn" data-lv="pause" id="lvpause">Pause</button><button class="btn p" data-lv="finish">Terminer</button></div>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="seed.js"></script>
+<script src="exos.js"></script>
 <script>
 (()=>{
 const SP={trail:['Trail','TR'],course:['Course route','CR'],velo:['Vélo','VL'],escalade:['Escalade','ES'],rando:['Rando','RA'],renfo:['Renfo','RF'],mobilite:['Mobilité','MO'],autre:['Autre','AU']};
@@ -391,7 +411,7 @@ function itemHTML(s){const k=s.sport in SP?s.sport:'autre',p=pmax(s),bits=[];
 
 const planned=d=>S.plan.filter(p=>p.date===d&&p.statut==='prevue');
 function itemPlan(p){const k=p.sport in SP?p.sport:'autre',st=p.statut||'prevue';
-  return `<button class="item" data-plan="${esc(p.id)}"><span class="sq${st==='faite'?'':' pl'}" style="--c:var(--${k});background:var(--${k})">${SP[k][1]}</span><span><h3>${esc(p.titre||SP[k][0])}</h3><p>${fdate(p.date)}${p.duree?' · '+fdur(p.duree):''}${p.cible?' · '+esc(p.cible):''}</p></span><span class="tag${st==='prevue'?'':' w'}">${st==='faite'?'faite':st==='sautee'?'sautée':'prévue'}</span></button>`}
+  return `<button class="item" data-plan="${esc(p.id)}"><span class="sq${st==='faite'?'':' pl'}" style="--c:var(--${k});background:var(--${k})">${SP[k][1]}</span><span><h3>${esc(p.titre||SP[k][0])}</h3><p>${fdate(p.date)}${p.duree?' · '+fdur(p.duree):''}${p.cible?' · '+esc(p.cible):''}</p>${st==='prevue'?(()=>{const m=materielFor(k,p.contenu,'plan');return m.length?`<p class="mt">Matériel : ${esc(m.slice(0,4).join(', '))}${m.length>4?'…':''}</p>`:''})():''}</span><span class="tag${st==='prevue'?'':' w'}">${st==='faite'?'faite':st==='sautee'?'sautée':'prévue'}</span></button>`}
 function planClick(id){const p=S.plan.find(x=>x.id===id);if(!p)return;const k=p.sport in SP?p.sport:'autre';
   if(p.statut==='prevue'){lvOpen({planId:p.id,titre:p.titre||SP[k][0],sport:k,duree:p.duree,cible:p.cible,contenu:p.contenu});return}
   if(p.statut==='faite'&&p.seanceId&&S.ss.some(s=>s.id===p.seanceId)){openDetail(p.seanceId);return}openPlan(id)}
@@ -476,6 +496,7 @@ function importText(raw){const m=raw.indexOf('{'),n=raw.lastIndexOf('}');if(m<0|
   for(const[id,t]of Object.entries(v.analyses||{})){const s=S.ss.find(x=>x.id===id);if(s){s.analyse=String(t);c.a++}}
   for(const[d,o]of Object.entries(v.jours||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&o&&typeof o==='object')S.days[d]={...(S.days[d]||{}),...o};
   const sup=v.supprimer||{};if(Array.isArray(sup.seances)){S.ss=S.ss.filter(x=>!sup.seances.includes(x.id));c.d+=sup.seances.length}if(Array.isArray(sup.plan)){S.plan=S.plan.filter(x=>!sup.plan.includes(x.id));c.d+=sup.plan.length}
+  if(v.exercices&&typeof v.exercices==='object'){const plus=LS.get('exosPlus',{});for(const[k,e]of Object.entries(v.exercices))if(e&&e.nom){plus[k]={...e,match:(e.match||[e.nom]).map(normz)}}LS.set('exosPlus',plus)}
   if(Array.isArray(v.routines))S.routines=v.routines;if(v.profil&&typeof v.profil==='object')S.profil={...DEF,...S.profil,...v.profil};
   persistLocal();renderAll();
   return `Importé : ${c.s} séance${c.s>1?'s':''}, ${c.p} séance${c.p>1?'s':''} prévue${c.p>1?'s':''}, ${c.a} analyse${c.a>1?'s':''}${c.d?', '+c.d+' suppression'+(c.d>1?'s':''):''}${v.routines?', routines mises à jour':''}${v.profil?', profil mis à jour':''}.`}
@@ -510,7 +531,7 @@ function openDetail(id){const s=S.ss.find(x=>x.id===id);if(!s)return;detailId=id
   const warn=cap&&s.fcMoy>cap?`<div class="note">FC moyenne au-dessus de ton plafond ${k==='velo'?'vélo':'course'} (${cap} bpm).</div>`:'';
   const dz=s.douleurs?ZO.map(([z,l])=>`<div class="meter"><span>${l}</span><div><i style="width:${(s.douleurs[z]||0)*10}%;background:${ZC[z]}"></i></div><b>${s.douleurs[z]||0}/10</b></div>`).join(''):'<p class="muted">Douleurs non renseignées.</p>';
   const dd=S.days[s.date]||{};
-  $('#dbody').innerHTML=`${warn}<div class="kv">${kv.map(([a,b])=>`<div><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div><h3 style="font-size:20px">Douleurs</h3>${dz}<p class="muted">Ce jour-là : bloc kiné ${dd.kine?'fait':'non coché'}, mobilité ${dd.mobilite?'faite':'non cochée'}${s.source==='garmin'?' · importée de Garmin':''}.</p>${s.notes?`<h3 style="font-size:20px;margin-top:10px">Notes</h3><p style="white-space:pre-wrap;margin:4px 0 0">${esc(s.notes)}</p>`:''}`;
+  $('#dbody').innerHTML=`${warn}<div class="kv">${kv.map(([a,b])=>`<div><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div><h3 style="font-size:20px">Douleurs</h3>${dz}<p class="muted">Ce jour-là : bloc kiné ${dd.kine?'fait':'non coché'}, mobilité ${dd.mobilite?'faite':'non cochée'}${s.source==='garmin'?' · importée de Garmin':''}.</p>${s.exos&&s.exos.length?`<h3 style="font-size:20px;margin-top:10px">Exercices</h3><div class="scroll"><table><thead><tr><th>Exercice</th><th>Séries</th><th>Cible</th><th>Charge</th></tr></thead><tbody>${s.exos.map(x=>`<tr><td style="white-space:normal">${esc(x.nom)}</td><td>${x.series}</td><td>${esc(x.cible||'')}</td><td>${x.kg&&x.kg.length?esc(x.kg.join(' / '))+' kg':'–'}</td></tr>`).join('')}</tbody></table></div>`:''}${s.notes?`<h3 style="font-size:20px;margin-top:10px">Notes</h3><p style="white-space:pre-wrap;margin:4px 0 0">${esc(s.notes)}</p>`:''}`;
   $('#dai').innerHTML=s.analyse?md(s.analyse):'';$('#dgo').hidden=!sample;$('#dgo').textContent=s.analyse?'Refaire l’analyse':'Analyser cette séance';
   $('#ddel').textContent='Supprimer';$('#ddel').dataset.arm='';$('#dov').classList.add('on')}
 async function analyse(){const s=S.ss.find(x=>x.id===detailId);if(!s)return;const el=$('#dai');el.textContent='Analyse en cours…';$('#dgo').disabled=true;
@@ -607,6 +628,48 @@ $('#pform').onsubmit=e=>{e.preventDefault();const courses=$('#p-races').value.sp
 function micFor(btn,target){btn.hidden=!dict;btn.onclick=()=>{if(btn.classList.contains('rec')){dict.stop().catch(()=>{});return}dictT=target;dict.start().catch(e=>{if(e&&e.code==='not_granted'){$$('.mic').forEach(b=>b.hidden=true)}})}}
 window.addEventListener('hashchange',route);
 
+/* ---------- bibliothèque d'exercices ---------- */
+const normz=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[’`]/g,"'");
+const XB=(window.EXOS&&window.EXOS.exos)||{},XS=(window.EXOS&&window.EXOS.sport)||{};
+function exAll(){return{...XB,...LS.get('exosPlus',{})}}
+function exFind(name){const n=normz(name);let best=null,bl=0;for(const[k,e]of Object.entries(exAll()))for(const m of(e.match&&e.match.length?e.match:[normz(e.nom)]))if(m&&n.includes(m)&&m.length>bl){best={key:k,...e};bl=m.length}return best}
+function fkJ(p){p=[...p,...Array(15).fill(0)].slice(0,15);const[px,py,t,ua1,fa1,ua2,fa2,th1,sh1,th2,sh2,f1,f2,c,hd]=p;
+  const d=(a,n)=>[Math.sin(a*Math.PI/180)*n,Math.cos(a*Math.PI/180)*n],ad=(o,v)=>[o[0]+v[0],o[1]+v[1]];
+  const hip=[px,py],sh=ad(hip,d(t,30)),head=ad(sh,d(t+hd,11)),e1=ad(sh,d(ua1,16)),h1=ad(e1,d(fa1,15)),e2=ad(sh,d(ua2,16)),h2=ad(e2,d(fa2,15)),
+  k1=ad(hip,d(th1,21)),a1=ad(k1,d(sh1,21)),k2=ad(hip,d(th2,21)),a2=ad(k2,d(sh2,21)),t1=ad(a1,d(sh1+90+f1,8)),t2=ad(a2,d(sh2+90+f2,8));
+  const mid=[(hip[0]+sh[0])/2,(hip[1]+sh[1])/2],pv=d(t+90,c),ctl=ad(mid,pv);return{hip,sh,head,e1,h1,e2,h2,k1,a1,k2,a2,t1,t2,ctl}}
+function figSVG(e){if(!e||!e.poses)return'';const A=fkJ(e.poses[0]),B=fkJ(e.poses[1]||e.poses[0]),same=JSON.stringify(e.poses[0])===JSON.stringify(e.poses[1]||e.poses[0]);
+  const n=v=>v.toFixed(1),pt=q=>n(q[0])+' '+n(q[1]);
+  const anim=(dA,dB,attr='d')=>same||dA===dB?'':`<animate attributeName="${attr}" values="${dA};${dB};${dA}" dur="2.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"/>`;
+  const path=(fn,cls)=>{const a=fn(A),b=fn(B);return`<path class="${cls}" d="${a}">${anim(a,b)}</path>`};
+  const L2=(x,y,z)=>f=>`M${pt(f[x])}L${pt(f[y])}`+(z?`L${pt(f[z])}`:'');
+  let g='';const pr=e.props||[];
+  if(!pr.includes('nofloor'))g+='<path class="pr" d="M4 108H196"/>';
+  for(const s of pr){const[k,v]=s.split(':'),a=(v||'').split(',').map(Number);
+    if(k==='mat')g+='<rect class="prf" x="18" y="105" width="164" height="3" rx="1.5"/>';
+    else if(k==='wall')g+=`<path class="pr" d="M${a[0]} 8V108" style="stroke-width:3"/>`;
+    else if(k==='box')g+=`<rect class="prf" x="${a[0]}" y="${a[1]}" width="${a[2]}" height="${a[3]}" rx="2"/>`;
+    else if(k==='bar')g+=`<path class="pr" d="M55 ${a[0]}H145" style="stroke-width:4"/>`;
+    else if(k==='chair')g+=`<path class="pr" d="M${a[0]} 50V108M${a[0]} 82H${a[0]+22}V108" style="stroke-width:3"/>`;
+    else if(k==='ball')g+=`<circle class="prf" cx="${a[0]}" cy="${a[1]}" r="5"/>`;
+    else if(k==='roller')g+=`<circle class="prf" cx="${a[0]}" cy="${a[1]}" r="8"/>`}
+  g+=path(L2('sh','e2','h2'),'far')+path(L2('hip','k2','a2'),'far')+path(f=>`M${pt(f.a2)}L${pt(f.t2)}`,'far');
+  g+=path(f=>`M${pt(f.hip)}Q${pt(f.ctl)} ${pt(f.sh)}`,'nr')+path(L2('hip','k1','a1'),'nr')+path(f=>`M${pt(f.a1)}L${pt(f.t1)}`,'nr')+path(L2('sh','e1','h1'),'nr');
+  for(const s of pr){const[k,v]=s.split(':'),a=(v||'').split(',').map(Number);
+    if(k==='band')g+=path(f=>`M${pt(f.h1)}L${a[0]} ${a[1]}`,'bd');
+    else if(k==='bandh')g+=path(f=>`M${pt(f.h1)}L${pt(f.h2)}`,'bd');
+    else if(k==='bandk')g+=path(f=>`M${pt([(f.k1[0]+f.a1[0])/2,(f.k1[1]+f.a1[1])/2])}L${pt([(f.k2[0]+f.a2[0])/2,(f.k2[1]+f.a2[1])/2])}`,'bd');
+    else if(k==='stickh')g+=path(f=>{const dx=f.h1[0]-f.h2[0],dy=f.h1[1]-f.h2[1],l=Math.hypot(dx,dy)||1,ux=dx/l*10,uy=dy/l*10;return`M${n(f.h2[0]-ux)} ${n(f.h2[1]-uy)}L${n(f.h1[0]+ux)} ${n(f.h1[1]+uy)}`},'db');
+    else if(k==='db'){g+=path(f=>`M${n(f.h1[0]-5)} ${n(f.h1[1])}H${n(f.h1[0]+5)}`,'db');if(a[0]===2)g+=path(f=>`M${n(f.h2[0]-5)} ${n(f.h2[1])}H${n(f.h2[0]+5)}`,'db')}
+    else if(k==='kb')g+=path(f=>{const x=(f.h1[0]+f.h2[0])/2+4,y=(f.h1[1]+f.h2[1])/2+5;return`M${n(x-5)} ${n(y)}a5 5 0 1 0 10 0a5 5 0 1 0-10 0`},'db')}
+  const hA=A.head,hB=B.head;g+=`<circle class="hd" r="7" cx="${n(hA[0])}" cy="${n(hA[1])}">${anim(n(hA[0]),n(hB[0]),'cx')}${anim(n(hA[1]),n(hB[1]),'cy')}</circle>`;
+  return`<svg viewBox="0 0 200 118" role="img" aria-label="${esc(e.nom)}">${g}</svg>`}
+function exCard(name,title){const e=exFind(name);if(!e)return'';const m=(e.materiel||[]).filter(x=>!/^rien/i.test(x));
+  return`<div class="lv-card lv-ex">${title?`<div class="lab">${esc(title)}</div>`:''}<div class="exfig">${figSVG(e)}</div><h3>${esc(e.nom)}</h3><ul>${(e.consignes||[]).map(c=>`<li>${esc(c)}</li>`).join('')}</ul>${m.length?`<div class="lab">Matériel : ${esc(m.join(', '))}</div>`:''}</div>`}
+function materielFor(sport,contenu,ctx){const{steps}=parseSteps(contenu,sport,ctx),out=[...(XS[sport]||[])];
+  for(const s of steps){if(s.type!=='set')continue;const e=exFind(s.name);for(const m of(e&&e.materiel)||[])if(!/^rien/i.test(m))out.push(m)}
+  const seen=new Set();return out.filter(m=>{const k=normz(m);if(seen.has(k))return false;seen.add(k);return true})}
+
 /* ---------- séance en direct ---------- */
 let L=LS.get('live',null),lvArm=0,actx=null,lastBeep=-1;
 const ENDU=['trail','course','velo','rando'];
@@ -635,7 +698,7 @@ function buildLive(o){const{steps,info}=parseSteps(o.contenu,o.sport,o.ctx);
     if(!steps.length)steps.push({type:'seg',label:o.duree?'Séance':'Chrono libre',sec:o.duree?want:null});
     else if(want&&want-tot>=900&&!steps.some(s=>s.go)){const last=steps[steps.length-1],k=/calme/i.test(last.label||'')?steps.length-1:steps.length;steps.splice(k,0,{type:'seg',label:o.sport==='escalade'?'Corps de séance : blocs':'Corps de séance',sec:want-tot})}}
   if(!steps.length)steps.push({type:'seg',label:'Chrono libre',sec:null});
-  return{v:1,planId:o.planId||null,routineId:o.routineId||null,titre:o.titre,sport:o.sport,cible:o.cible||'',duree:o.duree||null,info,steps,i:0,sd:{},skip:{},phase:'idle',startedAt:null,pausedMs:0,paused:false,pauseAt:null,phaseStart:null,phaseEnd:null,set:1,side:0,after:null,rest:o.ctx==='routine'?15:o.sport==='renfo'?75:60,tops:[],fails:0}}
+  return{v:1,planId:o.planId||null,routineId:o.routineId||null,titre:o.titre,sport:o.sport,cible:o.cible||'',duree:o.duree||null,info,steps,i:0,sd:{},skip:{},phase:'idle',startedAt:null,pausedMs:0,paused:false,pauseAt:null,phaseStart:null,phaseEnd:null,set:1,side:0,after:null,rest:o.ctx==='routine'?15:o.sport==='renfo'?75:60,tops:[],fails:0,kg:{},kgOn:{},log:{},matOk:{},peek:null,mat:materielFor(o.sport,o.contenu,o.ctx)}}
 const saveL=()=>LS.set('live',L);
 const tnow=()=>L&&L.paused?L.pauseAt:Date.now();
 const elapsed=()=>L&&L.startedAt?tnow()-L.startedAt-L.pausedMs:0;
@@ -650,9 +713,10 @@ function lvStart(){L.startedAt=Date.now();L.pausedMs=0;signal();enter(0);awake(t
 function enter(i,t0=Date.now()){L.i=i;const st=L.steps[i];
   if(!st){L.phase='end';L.phaseEnd=null;signal(true);saveL();lvRender();return}
   if(st.type==='seg'){L.phase='seg';L.phaseStart=t0;L.phaseEnd=st.sec?t0+st.sec*1000:null}
-  else{L.set=Math.min(st.sets,(L.sd[i]||0)+1);L.side=0;L.phase='ready';L.phaseEnd=null}
+  else{L.set=Math.min(st.sets,(L.sd[i]||0)+1);L.side=0;L.phase='ready';L.phaseEnd=null;kgInit(i)}
   saveL();lvRender()}
-function completeSet(){const i=L.i,st=L.steps[i];L.sd[i]=(L.sd[i]||0)+1;signal();
+function kgInit(i){const st=L.steps[i];if(!st||st.type!=='set'||L.kg[i]!=null)return;const memo=LS.get('kgMemo',{}),k=normz(st.name),e=exFind(st.name);L.kg[i]=memo[k]!=null?memo[k]:(e&&e.charge?5:0);L.kgOn[i]=memo[k]!=null?true:!!(e&&e.charge)}
+function completeSet(){const i=L.i,st=L.steps[i];L.sd[i]=(L.sd[i]||0)+1;signal();kgInit(i);(L.log[i]=L.log[i]||[]).push(L.kgOn[i]?+L.kg[i]:null);if(L.kgOn[i]){const m=LS.get('kgMemo',{});m[normz(st.name)]=+L.kg[i];LS.set('kgMemo',m)}
   const lastStep=i>=L.steps.length-1;
   if(L.sd[i]>=st.sets&&lastStep){enter(i+1);return}
   L.phase='rest';L.after=L.sd[i]>=st.sets?'next':'set';L.phaseEnd=Date.now()+L.rest*1000;saveL();lvRender()}
@@ -677,7 +741,10 @@ function stepSub(s){if(s.type==='seg')return s.sec?mmss(s.sec):'libre';return`${
 function lvRender(){if(!L)return;const st=L.steps[L.i],n=L.steps.length;$('#lvt').textContent=L.titre;
   const nx=L.steps.slice(L.i+1).find(()=>true);let c='';
   if(!L.startedAt){const tot=L.steps.reduce((a,s)=>a+(s.type==='seg'?(s.sec||0):0),0);
-    c=`<div class="lv-step">${esc(L.titre)}</div><div class="lv-sub">${n} étape${n>1?'s':''}${L.duree?' · '+fdur(L.duree):tot?' · '+fdur(tot/60):''}${L.cible?' · '+esc(L.cible):''}</div><div class="lv-time sm">Prêt ?</div><button class="lv-btn" data-lv="start">Démarrer la séance</button>`}
+    const mat=L.mat||[],ok=mat.filter((m,j)=>L.matOk[j]).length;
+    c=`<div class="lv-step">${esc(L.titre)}</div><div class="lv-sub">${n} étape${n>1?'s':''}${L.duree?' · '+fdur(L.duree):tot?' · '+fdur(tot/60):''}${L.cible?' · '+esc(L.cible):''}</div>
+    ${mat.length?`<div class="mat"><div class="lv-sub" style="margin:4px 0 0;color:var(--ink);font-weight:600">Matériel nécessaire${ok?` · ${ok}/${mat.length} prêt${ok>1?'s':''}`:''}</div>${mat.map((m,j)=>`<label><input type="checkbox" data-lv="mat" data-j="${j}"${L.matOk[j]?' checked':''}> ${esc(m)}</label>`).join('')}</div>`:''}
+    <button class="lv-btn" data-lv="start">Démarrer la séance</button><div class="lv-next">Touche une étape de la liste pour voir sa fiche.</div>`}
   else if(L.phase==='end'){c=`<div class="lv-step">Séance terminée</div><div class="lv-sub">${mmss(elapsed()/1000)} au total</div><button class="lv-btn" data-lv="finish">${L.routineId?'Valider la routine':'Enregistrer la séance'}</button><div class="lv-row"><button data-lv="prev">◀ Revenir</button></div>`}
   else if(st.type==='seg'){c=`<div class="lv-step">${esc(st.label)}</div><div class="lv-sub">Étape ${L.i+1} sur ${n}${L.cible?' · '+esc(L.cible):''}</div><div class="lv-time ${st.rec?'rest':st.go?'go':''}" id="lvtime">0:00</div>${st.sec?'<div class="lv-bar"><i id="lvbari"></i></div>':''}
     <div class="lv-row"><button data-lv="prev">◀ Précédent</button>${st.sec?'<button data-lv="plus1">+1 min</button>':'<span></span>'}<button data-lv="next">Suivant ▶</button></div>${nx?`<div class="lv-next">Ensuite : ${esc(stepTitle(nx))} (${stepSub(nx)})</div>`:''}`}
@@ -687,8 +754,12 @@ function lvRender(){if(!L)return;const st=L.steps[L.i],n=L.steps.length;$('#lvt'
     const btn=ph==='ready'?(st.hold?'Démarrer':'Série faite'):ph==='hold'?'Arrêter':ph==='switch'?'Changer de côté maintenant':'Passer le repos';
     c=`<div class="lv-step">${ph==='rest'?'Repos':ph==='switch'?'Change de côté':esc(st.name)}</div><div class="lv-sub">${sub}</div>${st.detail&&ph==='ready'?`<div class="lv-sub" style="font-size:15px">${esc(st.detail)}</div>`:''}${big}
     <button class="lv-btn${ph==='rest'||ph==='switch'?' alt':''}" data-lv="main">${btn}</button>
+    ${ph==='ready'?`<div class="kg"><label><input type="checkbox" data-lv="kgon"${L.kgOn[L.i]?' checked':''}> Avec charge</label>${L.kgOn[L.i]?`<button data-lv="kgm" aria-label="Moins 1 kg">−</button><input type="text" id="lvkg" inputmode="decimal" value="${String(L.kg[L.i]??0).replace('.',',')}" aria-label="Charge en kg"><span>kg</span><button data-lv="kgp" aria-label="Plus 1 kg">+</button>`:''}</div>`:ph==='rest'&&(L.log[L.i]||[]).length&&L.log[L.i][L.log[L.i].length-1]!=null?`<div class="lv-next">Série faite à ${String(L.log[L.i][L.log[L.i].length-1]).replace('.',',')} kg</div>`:''}
     <div class="lv-row"><button data-lv="prev">◀ Précédent</button>${ph==='rest'?'<button data-lv="rp15">+15 s</button>':`<button data-lv="restc">Repos ${L.rest} s</button>`}<button data-lv="next">Passer ▶</button></div>`}
   $('#lvcard').innerHTML=c;
+  {let ex='';if(!L.startedAt&&L.peek!=null){const s=L.steps[L.peek];ex=s&&s.type==='set'?exCard(s.name,'Fiche'):''}
+   else if(L.startedAt&&st&&L.phase!=='end'){if(L.phase==='rest'){const nxs=L.after==='next'?L.steps[L.i+1]:st;ex=nxs&&nxs.type==='set'?exCard(nxs.name,L.after==='next'?'À suivre':'Rappel'):''}else if(st.type==='set')ex=exCard(st.name,'')}
+   $('#lvex').innerHTML=ex}
   if(L.sport==='escalade'){const best=L.tops.reduce((a,g)=>GR.indexOf(g)>GR.indexOf(a)?g:a,'');
     $('#lvclimb').innerHTML=`<div class="lv-card" style="text-align:left"><div class="row" style="justify-content:space-between"><b style="font:700 22px 'Barlow Condensed'">Blocs réussis : ${L.tops.length}${best?' · max '+best:''}</b><span class="muted">${L.fails} essai${L.fails>1?'s':''} raté${L.fails>1?'s':''}</span></div>
       <div class="lv-tops">${GR.slice(2).map(g=>`<button data-lv="top" data-g="${g}">${g}</button>`).join('')}</div><div class="lv-row"><button data-lv="fail">Essai raté</button><button data-lv="undo">Annuler le dernier</button><span></span></div></div>`}else $('#lvclimb').innerHTML='';
@@ -707,9 +778,11 @@ function lvFinish(){if(!L)return;const el=elapsed(),o=L;
   if(o.routineId){setDay(today(),{mobilite:true});lvClear();toast('Routine terminée, mobilité cochée.');return}
   const done=o.steps.filter((s,i)=>s.type==='seg'?o.sd[i]:(o.sd[i]||0)>=s.sets).length,best=o.tops.reduce((a,g)=>GR.indexOf(g)>GR.indexOf(a)?g:a,'');
   const skipped=o.steps.filter((s,i)=>!(s.type==='seg'?o.sd[i]:(o.sd[i]||0)>=s.sets)).map(stepTitle);
-  LS.set('liveLast',o);lvClear();openForm();
+  const exos=o.steps.map((s,i)=>s.type==='set'&&o.sd[i]?{nom:s.name,series:o.sd[i],cible:s.hold?(s.hold>=60?mmss(s.hold):s.hold+' s'):s.reps,kg:(o.log[i]||[]).filter(x=>x!=null)}:null).filter(Boolean);
+  const kgTxt=exos.filter(x=>x.kg.length).map(x=>`${x.nom} : ${x.kg.map(v=>String(v).replace('.',',')).join(' / ')} kg`).join(' ; ');
+  LS.set('liveLast',o);lvClear();openForm();if(exos.length)cur.exos=exos;
   Object.assign(cur,{date:iso(new Date(o.startedAt||Date.now())),sport:o.sport in SP?o.sport:'autre',titre:o.titre,duree:Math.max(1,Math.round(el/60000))||o.duree,planId:o.planId||undefined,
-    notes:`Séance en direct : ${done}/${o.steps.length} étapes faites${skipped.length?' (non faites : '+skipped.slice(0,6).join(', ')+(skipped.length>6?'…':'')+')':''}.`+(o.sport==='escalade'?` ${o.tops.length} blocs réussis${best?', max '+best:''}, ${o.fails} essais ratés.`:'')});
+    notes:`Séance en direct : ${done}/${o.steps.length} étapes faites${skipped.length?' (non faites : '+skipped.slice(0,6).join(', ')+(skipped.length>6?'…':'')+')':''}.`+(o.sport==='escalade'?` ${o.tops.length} blocs réussis${best?', max '+best:''}, ${o.fails} essais ratés.`:'')+(kgTxt?` Charges : ${kgTxt}.`:'')});
   if(o.sport==='escalade'){cur.niveau=best||null;cur.blocs=o.tops.length}
   fill(cur);toast('Complète le ressenti et enregistre.')}
 $('#live').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if(!b||!L)return;const a=b.dataset.lv;initAudio();
@@ -719,7 +792,11 @@ $('#live').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if
   else if(a==='plus1'){if(L.phaseEnd)L.phaseEnd+=60000;L.steps[L.i].sec+=60;saveL();lvTick()}
   else if(a==='rp15'){L.phaseEnd+=15000;saveL();lvTick()}
   else if(a==='restc'){const R=[15,30,45,60,75,90,120,180];L.rest=R[(R.indexOf(L.rest)+1)%R.length]||60;saveL();lvRender()}
-  else if(a==='jump'){if(!L.startedAt)lvStart();enter(+b.dataset.i)}
+  else if(a==='jump'){if(!L.startedAt){const j=+b.dataset.i;L.peek=L.peek===j?null:j;saveL();lvRender();if(L.peek!=null)$('#lvex').scrollIntoView({block:'nearest',behavior:'smooth'});return}enter(+b.dataset.i)}
+  else if(a==='cancel'){if(Date.now()-lvArm>3000){lvArm=Date.now();toast('Touche encore Annuler : la séance ne sera pas enregistrée.');return}lvClear();toast('Séance annulée, rien n’a été enregistré.')}
+  else if(a==='mat'){L.matOk[b.dataset.j]=b.checked;saveL();lvRender()}
+  else if(a==='kgon'){kgInit(L.i);L.kgOn[L.i]=b.checked;saveL();lvRender()}
+  else if(a==='kgm'||a==='kgp'){kgInit(L.i);L.kg[L.i]=Math.max(0,Math.round(((+L.kg[L.i]||0)+(a==='kgp'?1:-1))*2)/2);saveL();lvRender()}
   else if(a==='top'){L.tops.push(b.dataset.g);buzz(60);saveL();lvRender()}
   else if(a==='fail'){L.fails++;saveL();lvRender()}else if(a==='undo'){L.tops.pop();saveL();lvRender()}
   else if(a==='pause'){if(L.paused){const d=Date.now()-L.pauseAt;L.pausedMs+=d;if(L.phaseEnd)L.phaseEnd+=d;if(L.phaseStart)L.phaseStart+=d;L.paused=false;L.pauseAt=null;awake(true)}else{L.paused=true;L.pauseAt=Date.now();awake(false)}saveL();lvRender()}
@@ -731,6 +808,7 @@ $('#live').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if
   else if(a==='delplan'){if(Date.now()-lvArm>3000){lvArm=Date.now();toast('Touche encore Supprimer pour confirmer.');return}const id=L.planId;S.plan=S.plan.filter(x=>x.id!==id);del('plan/'+id);lvClear();renderAll();toast('Séance prévue supprimée.')}});
 $('#lvban').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if(!b||!L)return;if(b.dataset.lv==='resume'){$('#live').classList.add('on');if(!L.paused)awake(true);lvRender()}else if(b.dataset.lv==='abandon'){if(Date.now()-lvArm>3000){lvArm=Date.now();toast('Touche encore Abandonner pour confirmer.');return}lvClear()}});
 $('#flive').onclick=()=>{const sp=cur.sport||'autre',t=$('#f-titre').value.trim()||SP[sp][0];$('#fov').classList.remove('on');lvOpen({sport:sp,titre:t,duree:null,contenu:'',ctx:'libre'});if(!L.startedAt)lvStart()};
+$('#live').addEventListener('change',e=>{if(e.target.id==='lvkg'&&L){const v=parseFloat(String(e.target.value).replace(',','.'));if(isFinite(v)&&v>=0){L.kg[L.i]=Math.round(v*2)/2;saveL()}e.target.value=String(L.kg[L.i]??0).replace('.',',')}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&L){lvTick();if($('#live').classList.contains('on'))lvRender()}});
 
 /* ---------- démarrage ---------- */
