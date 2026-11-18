@@ -69,6 +69,25 @@
 .kg button{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:700 24px 'Barlow Condensed'}
 .kg input#lvkg{width:5.2em;text-align:center;font:700 22px 'Barlow Condensed'}
 .item .mt{font-size:13px;margin-top:2px}
+.lg{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:14px;color:var(--mute);align-items:center}
+.lg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.sw{display:inline-block;width:18px;height:14px;border-radius:4px;flex:none}
+.sw.h{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--mute) 45%,transparent) 0 4px,transparent 4px 8px);box-shadow:inset 0 0 0 2px var(--mute)}
+.sw.f{background:var(--mute)}.sw.n{box-shadow:inset 0 0 0 2px var(--acc);background:var(--panel)}
+.kk{display:inline-grid;place-items:center;width:22px;height:20px;border-radius:5px;font:700 13px 'Barlow Condensed';border:1px solid var(--line)}
+.kk.k{background:var(--acc);color:#fff;border-color:var(--acc)}.kk.m{background:var(--forest);color:var(--on);border-color:var(--forest)}
+.lgh{font-weight:600;color:var(--ink);width:100%;margin-top:4px}
+.ordl{display:flex;flex-direction:column;gap:8px}
+.ord{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.ord .on{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 18px 'Barlow Condensed';color:#fff}
+.ord.done .on{opacity:.55}.ord.done b{text-decoration:line-through;text-decoration-thickness:1px}
+.ord b{display:block;font-size:17px;line-height:1.25}
+.ord small{display:block;color:var(--mute);font-size:14px;line-height:1.35;margin-top:2px}
+.ord .oa{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ord .oa .btn{min-height:40px;padding:0 12px}
+.ord .oa .ck{height:40px;padding:0 10px}
+.today{grid-template-columns:minmax(0,1fr)}
+.today h3 .muted{font:500 15px Barlow}
 .card h3{font-size:22px;margin-bottom:6px}
 :root{color-scheme:light dark;
 --bg:light-dark(#ffffff,#0e1512);--panel:light-dark(#f1f4f0,#17211c);--line:light-dark(#dde4dd,#2a3830);
@@ -224,8 +243,7 @@ nav a.on{opacity:1;background:rgba(255,255,255,.12)}
   <div class="lv-ban" id="lvban"></div>
   <div class="wk"><button class="nb" id="wprev" aria-label="Semaine précédente">‹</button><h2 id="wtitle">Cette semaine</h2><button class="nb" id="wnext" aria-label="Semaine suivante">›</button></div>
   <div class="board" id="board"></div>
-  <div class="legend" id="legend"></div>
-  <p class="muted" style="margin:8px 0 0">Plein = fait, hachuré = prévu. K = bloc kiné mollet/ischios + Rathleff, M = routine mobilité. Touche pour cocher.</p>
+  <div class="lg" id="legend"></div>
   <div class="today" id="today"></div>
   <div class="figs" id="figs"></div>
   <div id="todo"></div>
@@ -312,6 +330,12 @@ nav a.on{opacity:1;background:rgba(255,255,255,.12)}
   <div class="sec" style="margin-top:16px"><h2 style="font-size:22px;margin-bottom:8px">Analyse de Claude</h2><div class="ai" id="dai"></div><div class="row" style="margin-top:10px"><button class="btn p" id="dgo">Analyser cette séance</button></div></div>
   <div class="row fl"><button class="btn f" id="dedit">Modifier</button><button class="btn" id="ddel">Supprimer</button></div>
 </div></div>
+<div class="ov" id="yov"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ytitle">
+  <div class="sh"><h2 id="ytitle"></h2><button class="ib" data-close aria-label="Fermer">✕</button></div>
+  <p class="muted" style="margin:0 0 10px">Ordre conseillé pour la journée.</p>
+  <div id="ybody"></div>
+  <div class="row fl"><button class="btn" id="yadd">Ajouter une séance ce jour</button></div>
+</div></div>
 <div class="ov" id="pov"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ptitle">
   <div class="sh"><h2 id="ptitle"></h2><button class="ib" data-close aria-label="Fermer">✕</button></div>
   <div id="pbody"></div>
@@ -370,8 +394,8 @@ const pmax=s=>s.douleurs?Math.max(0,...Object.values(s.douleurs).map(Number)):nu
 /* ---------- accueil ---------- */
 function renderHome(){
   const m=add(mon(new Date()),S.week*7),days=[...Array(7)].map((_,i)=>iso(add(m,i))),t=today();
-  $('#wtitle').textContent=S.week===0?'Cette semaine':S.week===-1?'Semaine dernière':'Semaine du '+fdate(days[0]).slice(4);
-  $('#wnext').disabled=S.week>=0;
+  $('#wtitle').textContent=S.week===0?'Cette semaine':S.week===-1?'Semaine dernière':S.week===1?'Semaine prochaine':'Semaine du '+fdate(days[0]).slice(4);
+  $('#wnext').disabled=S.week>=4;
   const by=d=>S.ss.filter(s=>s.date===d),byP=d=>planned(d);
   const tot=days.map(d=>by(d).reduce((a,s)=>a+(s.duree||0),0)),ptot=days.map(d=>byP(d).reduce((a,p)=>a+(p.duree||0),0)),mx=Math.max(90,...tot.map((v,i)=>v+ptot[i]));
   $('#board').innerHTML=days.map((d,i)=>{const ss=by(d),dd=S.days[d]||{};
@@ -383,14 +407,11 @@ function renderHome(){
     <button class="ck m${dd.mobilite?' y':''}" data-ck="mobilite" data-d="${d}" aria-pressed="${!!dd.mobilite}" aria-label="Mobilité ${fdate(d)}">M</button></div>`}).join('');
   const wk=S.ss.filter(s=>s.date>=days[0]&&s.date<=days[6]);
   const used=[...new Set([...wk.map(s=>s.sport),...days.flatMap(d=>byP(d).map(p=>p.sport))])].filter(k=>k in SP);
-  const tp=S.plan.filter(p=>p.date===t).sort((a,b)=>(a.ordre||0)-(b.ordre||0)),td=S.days[t]||{},r=S.routines.find(x=>x.id===td.routine);
-  $('#today').innerHTML=`<div><h3>Aujourd’hui</h3>${tp.length?`<div class="list">${tp.map(itemPlan).join('')}</div>`:'<p class="muted" style="margin:0">Pas de séance prévue aujourd’hui.</p>'}</div>
-   <div class="rt"><h3>Routines du jour</h3><b>${r?esc(r.id+' · '+r.nom):'Mobilité : routine au choix selon la zone travaillée'}</b>${r?`<div style="margin-top:4px">${md(r.contenu)}</div><button class="btn f" data-rt="${r.id}" style="margin:4px 0 6px">Lancer la routine en direct</button>`:''}<p style="margin:8px 0">Bloc kiné mollet/ischios + Rathleff, comme prescrit.</p>
-   <div class="row"><button class="ck k${td.kine?' y':''}" data-ck="kine" data-d="${t}" aria-pressed="${!!td.kine}">Bloc kiné ${td.kine?'fait':'à faire'}</button><button class="ck m${td.mobilite?' y':''}" data-ck="mobilite" data-d="${t}" aria-pressed="${!!td.mobilite}">Mobilité ${td.mobilite?'faite':'à faire'}</button></div></div>`;
-  const lim=iso(add(new Date(),8)),up=S.plan.filter(p=>p.date>t&&p.date<=lim&&p.statut==='prevue').sort((a,b)=>(a.date+(a.ordre||0)).localeCompare(b.date+(b.ordre||0)));
+  $('#today').innerHTML=`<div><h3>Aujourd’hui <span class="muted">· ordre conseillé</span></h3>${dayOrderHTML(t)}</div>`;
+  const lim=iso(add(new Date(),8)),up=S.plan.filter(p=>p.date>t&&p.date<=lim&&p.statut==='prevue').sort(byIdeal);
   $('#upcoming').innerHTML=up.length?`<div class="list">${up.map(itemPlan).join('')}</div>`:'<div class="empty">Rien de prévu sur les 7 prochains jours.</div>';
   $('#pgen').hidden=false;$('#pgen').textContent='Demander la suite à Claude';
-  $('#legend').innerHTML=used.map(k=>`<span><span class="dot" style="background:var(--${k})"></span>${SP[k]?.[0]||k}</span>`).join('');
+  $('#legend').innerHTML=legendHTML(used);
   const vol=wk.reduce((a,s)=>a+(s.duree||0),0),dp=wk.reduce((a,s)=>a+(s.dplus||0),0);
   const prev=[1,2,3,4].map(n=>{const a=iso(add(m,-7*n)),b=iso(add(m,-7*n+6));return S.ss.filter(s=>s.date>=a&&s.date<=b).reduce((x,s)=>x+(s.duree||0),0)});
   const avg=prev.reduce((a,b)=>a+b,0)/4;
@@ -426,7 +447,7 @@ function openPlan(id){const p=S.plan.find(x=>x.id===id);if(!p)return;planOpen=id
 function renderJournal(){
   const fs=[['tout','Tout'],['prevues','Prévues'],['acompleter','À compléter'],...Object.entries(SP).map(([k,v])=>[k,v[0]])];
   $('#filters').innerHTML=fs.map(([k,n])=>`<button class="chip${S.filter===k?' on':''}" data-f="${k}">${n}</button>`).join('');
-  if(S.filter==='prevues'){const ps=S.plan.filter(p=>p.date>=today()).sort((a,b)=>(a.date+(a.ordre||0)).localeCompare(b.date+(b.ordre||0)));if(!ps.length){$('#jlist').innerHTML='<div class="empty">Aucune séance prévue.</div>';return}
+  if(S.filter==='prevues'){const ps=S.plan.filter(p=>p.date>=today()).sort(byIdeal);if(!ps.length){$('#jlist').innerHTML='<div class="empty">Aucune séance prévue.</div>';return}
     const g={};for(const p of ps){const k=iso(mon(pd(p.date)));(g[k]=g[k]||[]).push(p)}
     $('#jlist').innerHTML=Object.keys(g).sort().map(k=>`<div class="wkh"><span>Semaine du ${fdate(k).slice(4)}</span><span>${fdur(g[k].reduce((a,p)=>a+(p.duree||0),0))} prévues</span></div><div class="list">${g[k].map(itemPlan).join('')}</div>`).join('');return}
   let ss=sorted();if(S.filter==='acompleter')ss=ss.filter(s=>s.rpe==null&&s.sport!=='mobilite');else if(S.filter!=='tout')ss=ss.filter(s=>s.sport===S.filter);
@@ -582,7 +603,7 @@ function renderHeader(){const t=today(),d=new Date();$('#hdate').textContent=fda
   const c=(S.profil?.courses||[]).filter(x=>x.date>=t).sort((a,b)=>a.date.localeCompare(b.date))[0];
   $('#race').innerHTML=c?`<b>J-${Math.round((pd(c.date)-pd(t))/864e5)}</b><br>${esc(c.nom)}`:'';$('#race').hidden=!c}
 
-function renderAll(){renderBan();renderHeader();renderHome();renderJournal();renderBilan();renderEchange();renderProfil()}
+function renderAll(){if($('#yov').classList.contains('on'))renderDay();renderBan();renderHeader();renderHome();renderJournal();renderBilan();renderEchange();renderProfil()}
 function route(){const v=(location.hash||'#accueil').slice(1),ok=['accueil','journal','bilan','echange','profil'].includes(v)?v:'accueil';
   $$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+ok));$$('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===ok));$('#main').scrollTop=0;if(ok==='bilan')requestAnimationFrame(drawPain)}
 
@@ -593,11 +614,12 @@ $('#fpain').innerHTML=ZO.map(([z,l])=>`<div class="pain"><label for="pz-${z}" st
 $('#f-niv').innerHTML=GR.map(g=>`<option value="${g}">${g||'–'}</option>`).join('');
 document.addEventListener('click',e=>{const t=e.target.closest('button,[data-close]');if(!t)return;
   if(t.matches('[data-close]')){t.closest('.ov').classList.remove('on');return}
+  if(t.closest('#yov')&&(t.dataset.open||t.dataset.plan))$('#yov').classList.remove('on');
   if(t.dataset.open){openDetail(t.dataset.open);return}
   if(t.dataset.plan){planClick(t.dataset.plan);return}
   if(t.dataset.rt){const r=S.routines.find(x=>x.id===t.dataset.rt);if(r)lvOpen({routineId:r.id,titre:r.id+' · '+r.nom,sport:'mobilite',contenu:r.contenu,ctx:'routine'});return}
   if(t.dataset.ck){const d=t.dataset.d;setDay(d,{[t.dataset.ck]:!(S.days[d]||{})[t.dataset.ck]});return}
-  if(t.dataset.day){const d=t.dataset.day,ss=S.ss.filter(s=>s.date===d),ps=planned(d);if(ss.length===1&&!ps.length)openDetail(ss[0].id);else if(!ss.length&&ps.length===1)planClick(ps[0].id);else if(ss.length||ps.length){S.filter=d>=today()&&!ss.length?'prevues':'tout';renderJournal();location.hash='#journal'}else{openForm();cur.date=d;fill(cur)}return}
+  if(t.dataset.day){openDay(t.dataset.day);return}
   if(t.dataset.f){S.filter=t.dataset.f;renderJournal();return}
   if(t.dataset.p){S.period=+t.dataset.p;renderBilan();return}
   if(t.dataset.s){setSport(t.dataset.s);return}
@@ -607,7 +629,8 @@ $('#ov-none')?.remove();
 $$('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on')}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$$('.ov.on').forEach(o=>o.classList.remove('on'))});
 $('#add').onclick=()=>openForm();
-$('#wprev').onclick=()=>{S.week--;renderHome()};$('#wnext').onclick=()=>{if(S.week<0){S.week++;renderHome()}};
+$('#yadd').onclick=()=>{const d=dayOpen;$('#yov').classList.remove('on');openForm();cur.date=d;fill(cur)};
+$('#wprev').onclick=()=>{S.week--;renderHome()};$('#wnext').onclick=()=>{if(S.week<4){S.week++;renderHome()}};
 $('#f-rpe').oninput=()=>{cur.rpeSet=true;rpeLabel()};
 ZO.forEach(([z])=>$('#pz-'+z).oninput=e=>$('#pv-'+z).textContent=e.target.value);
 $('#sform').onsubmit=saveForm;$('#fparse').onclick=parseDesc;
@@ -627,6 +650,46 @@ $('#pform').onsubmit=e=>{e.preventDefault();const courses=$('#p-races').value.sp
   S.profil={contexte:$('#p-ctx').value.trim(),fcCourse:num($('#p-fcc').value),fcVelo:num($('#p-fcv').value),fcZ2:num($('#p-z2').value),courses};put('profil/main',S.profil);document.activeElement?.blur();renderAll();toast('Profil enregistré.')};
 function micFor(btn,target){btn.hidden=!dict;btn.onclick=()=>{if(btn.classList.contains('rec')){dict.stop().catch(()=>{});return}dictT=target;dict.start().catch(e=>{if(e&&e.code==='not_granted'){$$('.mic').forEach(b=>b.hidden=true)}})}}
 window.addEventListener('hashchange',route);
+
+/* ---------- légende et ordre conseillé ---------- */
+function legendHTML(used){const sp=(used.length?used:['trail','velo','escalade','renfo']).map(k=>`<span><i class="sw" style="background:var(--${k})"></i>${SP[k][0]}</span>`).join('');
+  return sp+`<span><i class="sw f"></i>Plein : fait</span><span><i class="sw h"></i>Hachuré : prévu</span><span><i class="sw n"></i>Aujourd’hui</span><span><i class="kk k">K</i>Bloc kiné fait</span><span><i class="kk m">M</i>Mobilité faite</span><span>Touche un jour pour son ordre conseillé, K ou M pour cocher.</span>`}
+const isRun=k=>k==='course'||k==='trail';
+const hasRt=(c,id)=>String(c||'').split('\n').some(l=>!/^\s*[-•*]?\s*sinon/i.test(l)&&new RegExp('\\b'+id+'\\b').test(l));
+function planRank(sport,titre,ctx){const n=normz(titre);
+  if(isRun(sport))return 10;if(sport==='escalade')return 20;if(sport==='velo')return 30;
+  if(sport==='renfo'){if(/bas du corps|jambe|squat|fente/.test(n))return 40;return /antagoniste/.test(n)?46:45}
+  if(sport==='rando')return 50;if(sport==='mobilite')return 60;return 55}
+function dayItems(d){const ss=S.ss.filter(s=>s.date===d),ps=S.plan.filter(p=>p.date===d),dd=S.days[d]||{},r=S.routines.find(x=>x.id===dd.routine);
+  const sports=[...ss.map(s=>s.sport),...ps.filter(p=>p.statut!=='sautee').map(p=>p.sport)],run=sports.some(isRun),velo=sports.includes('velo'),grimpe=sports.includes('escalade');
+  const linked=new Set(ps.map(p=>p.seanceId).filter(Boolean));const items=[];
+  const why=(sport,titre)=>{const n=normz(titre),rk=planRank(sport,titre);
+    if(isRun(sport))return'En premier, jambes fraîches : la reprise de course est la priorité.';
+    if(sport==='escalade')return'Doigts et épaules frais pour grimper.';
+    if(sport==='velo')return run?'Après la course.':'Séance principale du jour.';
+    if(sport==='renfo'&&rk===40)return run?'Après la course : le renfo fatiguerait la foulée. Idéal : quelques heures d’écart.':velo?'Après le vélo.':'Séance principale du jour.';
+    if(sport==='renfo')return grimpe?'Juste après l’escalade : on renforce les muscles opposés.':'Séance principale du jour.';
+    if(sport==='rando')return'Tranquille, quand tu veux.';return''};
+  for(const p of ps){const rp=r&&hasRt(p.contenu,r.id);items.push({kind:'plan',p,rank:planRank(p.sport,p.titre),why:why(p.sport,p.titre)+(rp?` La routine ${r.id} y est incluse.`:'')})}
+  for(const s of ss)if(!linked.has(s.id))items.push({kind:'done',s,rank:planRank(s.sport,s.titre||''),why:'Faite.'});
+  const rIncl=r&&ps.some(p=>p.statut!=='sautee'&&hasRt(p.contenu,r.id));
+  if(r&&!rIncl)items.push({kind:'routine',r,rank:r.id==='R6'?5:80,why:r.id==='R6'?'Juste avant de courir, pour activer.':sports.length?'En fin de journée ou après la séance, au calme.':'Quand tu veux dans la journée.'});
+  if(!r||rIncl)items.push({kind:'routine',r:null,rank:80,why:rIncl?`${r.id} est faite en activation dans la séance : ajoute une routine au calme le soir, au choix.`:'Choisis une routine selon la zone travaillée aujourd’hui.'});
+  items.push({kind:'kine',rank:run?70:75,why:run?'Après la course, jamais avant : le Rathleff fatigue le mollet.':sports.length?'Après la séance ou à un autre moment, au calme.':'À n’importe quel moment de la journée.'});
+  return items.sort((a,b)=>a.rank-b.rank||((a.p&&a.p.ordre)||0)-((b.p&&b.p.ordre)||0))}
+function byIdeal(a,b){return a.date.localeCompare(b.date)||planRank(a.sport,a.titre)-planRank(b.sport,b.titre)||(a.ordre||0)-(b.ordre||0)}
+function dayOrderHTML(d){const dd=S.days[d]||{};return`<div class="ordl">${dayItems(d).map((it,i)=>{let col,ti,sub,act,done=false;
+    if(it.kind==='plan'){const p=it.p,k=p.sport in SP?p.sport:'autre';col=`var(--${k})`;ti=esc(p.titre||SP[k][0]);done=p.statut==='faite';
+      sub=[p.duree?fdur(p.duree):'',p.cible?esc(p.cible):'',p.statut==='sautee'?'sautée':''].filter(Boolean).join(' · ');
+      act=p.statut==='prevue'?`<button class="btn p" data-plan="${esc(p.id)}">Lancer</button>`:`<button class="btn" data-plan="${esc(p.id)}">${p.statut==='faite'?'Voir':'Ouvrir'}</button>`}
+    else if(it.kind==='done'){const s=it.s,k=s.sport in SP?s.sport:'autre';col=`var(--${k})`;ti=esc(s.titre||SP[k][0]);done=true;sub=s.duree?fdur(s.duree):'';act=`<button class="btn" data-open="${esc(s.id)}">Voir</button>`}
+    else if(it.kind==='routine'){col='var(--forest)';done=!!dd.mobilite;ti=it.r?`Mobilité · ${esc(it.r.id+' '+it.r.nom)}`:'Mobilité';sub='';
+      act=`${it.r?`<button class="btn f" data-rt="${it.r.id}">Lancer</button>`:''}<button class="ck m${dd.mobilite?' y':''}" data-ck="mobilite" data-d="${d}" aria-pressed="${!!dd.mobilite}">${dd.mobilite?'Faite':'Cocher'}</button>`}
+    else{col='var(--acc)';done=!!dd.kine;ti='Bloc kiné mollet/ischios + Rathleff';sub='';act=`<button class="ck k${dd.kine?' y':''}" data-ck="kine" data-d="${d}" aria-pressed="${!!dd.kine}">${dd.kine?'Fait':'Cocher'}</button>`}
+    return`<div class="ord${done?' done':''}"><span class="on" style="background:${col}">${done?'✓':i+1}</span><div class="ob"><b>${ti}</b><small>${[sub,esc(it.why)].filter(Boolean).join(' · ')}</small></div><div class="oa">${act}</div></div>`}).join('')}</div>`}
+let dayOpen=null;
+function openDay(d){dayOpen=d;renderDay();$('#yov').classList.add('on')}
+function renderDay(){if(!dayOpen)return;$('#ytitle').textContent=fdate(dayOpen)+(dayOpen===today()?' · aujourd’hui':'');$('#ybody').innerHTML=dayOrderHTML(dayOpen)}
 
 /* ---------- bibliothèque d'exercices ---------- */
 const normz=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[’`]/g,"'");
