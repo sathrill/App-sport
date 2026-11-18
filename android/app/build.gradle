@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+def run = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+
+android {
+    namespace 'app.carnet.entrainement'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.carnet.entrainement'
+        minSdk 24
+        targetSdk 34
+        versionCode run
+        versionName "1.0.${run}"
+    }
+
+    // Clé fixe : chaque nouvelle version s'installe par-dessus l'ancienne sans perdre les données.
+    signingConfigs {
+        stable {
+            storeFile file('carnet.keystore')
+            storePassword 'carnet-android'
+            keyAlias 'carnet'
+            keyPassword 'carnet-android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.stable
+        }
+        debug {
+            signingConfig signingConfigs.stable
+        }
+    }
+
+    // L'app embarque le dossier web/ du dépôt.
+    sourceSets {
+        main { assets.srcDirs = ['../../web'] }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
