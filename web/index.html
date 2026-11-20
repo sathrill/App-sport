@@ -93,7 +93,7 @@
 --bg:light-dark(#ffffff,#0e1512);--panel:light-dark(#f1f4f0,#17211c);--line:light-dark(#dde4dd,#2a3830);
 --ink:light-dark(#14201b,#e7eee9);--mute:light-dark(#56685e,#9fb2a7);
 --forest:light-dark(#1f4d3a,#163828);--on:#f2f7f3;--acc:light-dark(#d9480f,#ff6b35);
---trail:#e4572e;--course:#f0963c;--velo:#2f6fdb;--escalade:#8b5cf6;--rando:#6b8f3c;--renfo:#0e9384;--mobilite:#c99a06;--autre:#7b8794}
+--trail:#e4572e;--course:#f0963c;--velo:#2f6fdb;--escalade:#8b5cf6;--rando:#6b8f3c;--renfo:#0e9384;--mobilite:#c99a06;--natation:#0f9fc4;--autre:#7b8794}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%;margin:0}
@@ -359,7 +359,7 @@ nav a.on{opacity:1;background:rgba(255,255,255,.12)}
 <script src="exos.js"></script>
 <script>
 (()=>{
-const SP={trail:['Trail','TR'],course:['Course route','CR'],velo:['Vélo','VL'],escalade:['Escalade','ES'],rando:['Rando','RA'],renfo:['Renfo','RF'],mobilite:['Mobilité','MO'],autre:['Autre','AU']};
+const SP={trail:['Trail','TR'],course:['Course route','CR'],velo:['Vélo','VL'],escalade:['Escalade','ES'],natation:['Natation','NA'],rando:['Rando','RA'],renfo:['Renfo','RF'],mobilite:['Mobilité','MO'],autre:['Autre','AU']};
 const ZO=[['pied','Pied, fascia'],['cheville','Cheville'],['mollet','Mollet'],['ischio','Ischios'],['hanche','Hanche'],['doigts','Doigts']];
 const ZC={pied:'var(--acc)',cheville:'var(--velo)',mollet:'var(--renfo)',ischio:'var(--escalade)',hanche:'var(--mobilite)',doigts:'var(--rando)'};
 const GR=['','5','5+','6A','6A+','6B','6B+','6C','6C+','7A','7A+'];
@@ -545,6 +545,7 @@ function openDetail(id){const s=S.ss.find(x=>x.id===id);if(!s)return;detailId=id
   $('#dtitle').textContent=s.titre||SP[k][0];
   const kv=[['Date',fdate(s.date)],['Discipline',SP[k][0]],['Durée',s.duree?fdur(s.duree):'–']];
   if(s.distance)kv.push(['Distance',String(s.distance).replace('.',',')+' km']);if(s.dplus)kv.push(['D+',s.dplus+' m']);if(s.distance&&s.duree&&['trail','course','rando'].includes(k)){const p=s.duree/s.distance;kv.push(['Allure',Math.floor(p)+':'+pad(Math.round((p%1)*60))+' /km'])}
+  if(s.distance&&s.duree&&k==='natation'){const p=s.duree*60/(s.distance*10);kv.push(['Allure',Math.floor(p/60)+':'+pad(Math.round(p%60))+' /100 m'])}
   if(s.distance&&s.duree&&k==='velo')kv.push(['Vitesse',(s.distance/(s.duree/60)).toFixed(1).replace('.',',')+' km/h']);
   if(s.fcMoy)kv.push(['FC moy.',s.fcMoy+' bpm']);if(s.fcMax)kv.push(['FC max',s.fcMax+' bpm']);if(s.niveau)kv.push(['Niveau max',s.niveau]);if(s.blocs)kv.push(['Blocs',s.blocs]);
   kv.push(['RPE',s.rpe!=null?s.rpe+' · '+RPEW(s.rpe):'à noter']);if(s.sensation)kv.push(['Sensations',SENS[s.sensation]]);
@@ -561,7 +562,7 @@ async function analyse(){const s=S.ss.find(x=>x.id===detailId);if(!s)return;cons
 
 /* ---------- formulaire ---------- */
 function setSport(k){cur.sport=k;$$('#fsport .chip').forEach(b=>b.classList.toggle('on',b.dataset.s===k));
-  $$('[data-for=dist]').forEach(e=>e.hidden=!['trail','course','velo','rando'].includes(k));$$('[data-for=grimpe]').forEach(e=>e.hidden=k!=='escalade');$$('[data-for=fc]').forEach(e=>e.hidden=k==='mobilite')}
+  $$('[data-for=dist]').forEach(e=>e.hidden=!['trail','course','velo','rando','natation'].includes(k));$$('[data-for=grimpe]').forEach(e=>e.hidden=k!=='escalade');$$('[data-for=fc]').forEach(e=>e.hidden=k==='mobilite')}
 function setSens(v){cur.sensation=v;$$('#fsens .chip').forEach(b=>b.classList.toggle('on',+b.dataset.v===v))}
 function rpeLabel(){$('#rpel').textContent=cur.rpeSet?$('#f-rpe').value+' · '+RPEW(+$('#f-rpe').value):'non noté, fais glisser'}
 function openForm(s){cur=s?JSON.parse(JSON.stringify(s)):{id:'s'+Date.now().toString(36),date:today(),sport:'trail'};
@@ -574,7 +575,7 @@ function fill(c){$('#f-date').value=c.date||today();$('#f-titre').value=c.titre|
   const d=S.days[c.date||today()]||{};$('#f-kine').checked=c.kine??!!d.kine;$('#f-mob').checked=c.mob??!!d.mobilite;$('#f-notes').value=c.notes||''}
 function saveForm(e){e.preventDefault();const c=cur;
   c.date=$('#f-date').value||today();c.titre=$('#f-titre').value.trim();const dur=(num($('#f-h').value)||0)*60+(num($('#f-m').value)||0);c.duree=dur||null;
-  const sp=c.sport,dist=['trail','course','velo','rando'].includes(sp);c.distance=dist?num($('#f-dist').value):null;c.dplus=dist?num($('#f-dplus').value):null;
+  const sp=c.sport,dist=['trail','course','velo','rando','natation'].includes(sp);c.distance=dist?num($('#f-dist').value):null;c.dplus=dist?num($('#f-dplus').value):null;
   c.fcMoy=sp!=='mobilite'?num($('#f-fcm').value):null;c.fcMax=sp!=='mobilite'?num($('#f-fcx').value):null;c.niveau=sp==='escalade'?$('#f-niv').value||null:null;c.blocs=sp==='escalade'?num($('#f-blocs').value):null;
   c.rpe=c.rpeSet?+$('#f-rpe').value:null;c.douleurs=Object.fromEntries(ZO.map(([z])=>[z,+$('#pz-'+z).value]));c.notes=$('#f-notes').value.trim();
   const kine=$('#f-kine').checked,mob=$('#f-mob').checked;delete c.rpeSet;delete c.kine;delete c.mob;if(!c.cree)c.cree=Date.now();
@@ -657,7 +658,7 @@ function legendHTML(used){const sp=(used.length?used:['trail','velo','escalade',
 const isRun=k=>k==='course'||k==='trail';
 const hasRt=(c,id)=>String(c||'').split('\n').some(l=>!/^\s*[-•*]?\s*sinon/i.test(l)&&new RegExp('\\b'+id+'\\b').test(l));
 function planRank(sport,titre,ctx){const n=normz(titre);
-  if(isRun(sport))return 10;if(sport==='escalade')return 20;if(sport==='velo')return 30;
+  if(isRun(sport))return 10;if(sport==='escalade')return 20;if(sport==='velo')return 30;if(sport==='natation')return 32;
   if(sport==='renfo'){if(/bas du corps|jambe|squat|fente/.test(n))return 40;return /antagoniste/.test(n)?46:45}
   if(sport==='rando')return 50;if(sport==='mobilite')return 60;return 55}
 function dayItems(d){const ss=S.ss.filter(s=>s.date===d),ps=S.plan.filter(p=>p.date===d),dd=S.days[d]||{},r=S.routines.find(x=>x.id===dd.routine);
@@ -735,7 +736,7 @@ function materielFor(sport,contenu,ctx){const{steps}=parseSteps(contenu,sport,ct
 
 /* ---------- séance en direct ---------- */
 let L=LS.get('live',null),lvArm=0,actx=null,lastBeep=-1;
-const ENDU=['trail','course','velo','rando'];
+const ENDU=['trail','course','velo','rando','natation'];
 const mmss=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return(h?h+':'+pad(m):m)+':'+pad(s%60)};
 const clean=l=>l.replace(/^\s*[-•*]\s*/,'').replace(/\*\*/g,'').trim();
 function durOf(l){const m=l.match(/(\d+)\s*h(?:\s*(\d+))?(?![a-zà-ü])|(\d+)(?:\s*à\s*(\d+))?\s*min\b/i);if(!m)return null;return{sec:m[1]?(+m[1]*60+(+m[2]||0))*60:(+(m[4]||m[3]))*60,at:m.index}}
