@@ -9,6 +9,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileOutputStream;
 import android.os.Vibrator;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -23,6 +30,14 @@ import androidx.webkit.WebViewAssetLoader;
 public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private WebView web;
+    private ValueCallback<Uri[]> fileCb;
+    private Uri camUri;
+    private static final int REQ_FILE = 42;
+
+    private Uri cacheUri(String prefix, String ext) throws Exception {
+        File f = File.createTempFile(prefix, ext, getCacheDir());
+        return FileProvider.getUriForFile(this, getPackageName() + ".files", f);
+    }
 
     @Override
     protected void onCreate(Bundle state) {
@@ -61,10 +76,44 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Choix d'une photo : appareil photo ou galerie.
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> cb, FileChooserParams params) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                Intent pick = params.createIntent();
+                Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                try {
+                    camUri = cacheUri("photo", ".jpg");
+                    cam.putExtra(MediaStore.EXTRA_OUTPUT, camUri);
+                    cam.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (Exception e) { cam = null; camUri = null; }
+                Intent chooser = Intent.createChooser(pick, "Photo du plat");
+                if (cam != null) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cam});
+                try { startActivityForResult(chooser, REQ_FILE); }
+                catch (Exception e) { fileCb = null; return false; }
+                return true;
+            }
+        });
+
         web.addJavascriptInterface(new Bridge(), "Android");
 
         if (state != null) web.restoreState(state);
         else web.loadUrl("https://" + HOST + "/assets/index.html");
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_FILE || fileCb == null) return;
+        Uri[] result = null;
+        if (res == RESULT_OK) {
+            if (data != null && data.getData() != null) result = new Uri[]{data.getData()};
+            else if (camUri != null) result = new Uri[]{camUri};
+        }
+        fileCb.onReceiveValue(result);
+        fileCb = null;
     }
 
     @Override
@@ -108,6 +157,30 @@ public class MainActivity extends Activity {
             if (v == null) return;
             if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
             else v.vibrate(ms);
+        }
+
+        @JavascriptInterface
+        public void shareImage(String dataUrl, String text) {
+            runOnUiThread(() -> {
+                try {
+                    String b64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                    byte[] bytes = Base64.decode(b64, Base64.DEFAULT);
+                    File f = File.createTempFile("plat", ".jpg", getCacheDir());
+                    FileOutputStream os = new FileOutputStream(f);
+                    os.write(bytes);
+                    os.close();
+                    Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType("image/jpeg");
+                    i.putExtra(Intent.EXTRA_STREAM, uri);
+                    i.putExtra(Intent.EXTRA_TEXT, text);
+                    i.setClipData(ClipData.newRawUri("plat", uri));
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(i, "Envoyer le plat à Claude"));
+                } catch (Exception e) {
+                    share(text);
+                }
+            });
         }
 
         @JavascriptInterface

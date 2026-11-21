@@ -1,5 +1,5 @@
-const CACHE='carnet-v2';
-const FILES=['./','./index.html','./seed.js','./exos.js','./manifest.webmanifest','./icon-192.png','./icon-512.png',
+const CACHE='carnet-v3';
+const FILES=['./','./index.html','./seed.js','./exos.js','./foods.js','./manifest.webmanifest','./icon-192.png','./icon-512.png',
 './fonts/barlow-latin-400-normal.woff2','./fonts/barlow-latin-500-normal.woff2','./fonts/barlow-latin-600-normal.woff2',
 './fonts/barlow-condensed-latin-600-normal.woff2','./fonts/barlow-condensed-latin-700-normal.woff2'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
