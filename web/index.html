@@ -253,6 +253,7 @@ nav a.on{opacity:1;background:rgba(255,255,255,.12)}
 .madd{width:100%;min-height:40px;border-style:dashed;color:var(--mute)}
 .nwb{display:flex;gap:6px;align-items:flex-end;height:110px}.nwc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
 .nwt{position:relative;flex:1;width:100%;background:var(--panel);border-radius:8px;overflow:hidden}.nwt .kc{position:absolute;left:0;right:0;bottom:0;background:var(--mob);border-radius:8px 8px 0 0}.nwt .kc.over{background:var(--acc)}
+.gline{margin-top:10px;font-size:14px;background:var(--panel);border-radius:10px;padding:8px 10px}.gline.warn{border:1px solid #ffcf5a;color:#ffe2a0}
 .nwt .tg{position:absolute;left:0;right:0;height:2px;background:var(--ink)}.nwc span{font-size:12px;color:var(--mute)}
 /* ---------- coach ---------- */
 .brief{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
@@ -643,9 +644,10 @@ function importText(raw){if(/CARNET-REPAS:/.test(raw)&&!/CARNET-IMPORT:/.test(ra
   for(const[d,o]of Object.entries(v.jours||{}))if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&o&&typeof o==='object')S.days[d]={...(S.days[d]||{}),...o};
   const sup=v.supprimer||{};if(Array.isArray(sup.seances)){S.ss=S.ss.filter(x=>!sup.seances.includes(x.id));c.d+=sup.seances.length}if(Array.isArray(sup.plan)){S.plan=S.plan.filter(x=>!sup.plan.includes(x.id));c.d+=sup.plan.length}
   if(v.exercices&&typeof v.exercices==='object'){const plus=LS.get('exosPlus',{});for(const[k,e]of Object.entries(v.exercices))if(e&&e.nom){plus[k]={...e,match:(e.match||[e.nom]).map(normz)}}LS.set('exosPlus',plus)}
+  if(v.garmin&&typeof v.garmin==='object'&&S.nut){S.nut.garmin={...(S.nut.garmin||{}),...v.garmin}}
   if(Array.isArray(v.routines))S.routines=v.routines;if(v.profil&&typeof v.profil==='object')S.profil={...DEF,...S.profil,...v.profil};
   persistLocal();if(S.ss.length||S.plan.length)$('#note').textContent='';renderAll();
-  return `Importé : ${c.s} séance${c.s>1?'s':''}, ${c.p} séance${c.p>1?'s':''} prévue${c.p>1?'s':''}, ${c.a} analyse${c.a>1?'s':''}${c.d?', '+c.d+' suppression'+(c.d>1?'s':''):''}${v.routines?', routines mises à jour':''}${v.profil?', profil mis à jour':''}.`}
+  return `Importé : ${c.s} séance${c.s>1?'s':''}, ${c.p} séance${c.p>1?'s':''} prévue${c.p>1?'s':''}, ${c.a} analyse${c.a>1?'s':''}${c.d?', '+c.d+' suppression'+(c.d>1?'s':''):''}${v.routines?', routines mises à jour':''}${v.profil?', profil mis à jour':''}${v.garmin?', '+Object.keys(v.garmin).length+' jours Garmin':''}.`}
 function context(){const p=S.profil||DEF,t=today(),lim=iso(add(new Date(),-90));
   const ss=sorted().filter(s=>s.date>=lim).slice(0,70).map(s=>{const d=s.douleurs?Object.entries(s.douleurs).filter(([,v])=>v>0).map(([z,v])=>z+v).join(' '):'non notées';return `${s.date} ${s.sport}${s.titre?' «'+s.titre+'»':''} ${s.duree?fdur(s.duree):''}${s.distance?' '+s.distance+'km':''}${s.dplus?' D+'+s.dplus:''}${s.fcMoy?' FC'+s.fcMoy+(s.fcMax?'/'+s.fcMax:''):''}${s.niveau?' max '+s.niveau:''}${s.blocs?' '+s.blocs+' blocs':''} RPE ${s.rpe??'-'} sensations ${s.sensation??'-'} douleurs: ${d||'aucune'}${s.notes?' | '+s.notes:''}`}).join('\n');
   const dd=[...Array(14)].map((_,i)=>{const k=iso(add(new Date(),-i)),o=S.days[k]||{};return k+' '+(o.kine?'K':'-')+(o.mobilite?'M':'-')}).join(', ');
@@ -1079,7 +1081,7 @@ $('#live').addEventListener('change',e=>{if(e.target.id==='lvkg'&&L){const v=par
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&L){lvTick();if($('#live').classList.contains('on'))lvRender()}});
 
 /* ---------- nutrition (sèche) ---------- */
-const NDEF={profil:{sexe:'',age:null,taille:168,poids:80,objectif:null,deficit:0.15,activite:1.4},repas:[],poids:[]};
+const NDEF={profil:{sexe:'',age:null,taille:168,poids:80,objectif:null,deficit:0.15,activite:1.4},repas:[],poids:[],garmin:{}};
 const TYPES=[['pdj','Petit-déjeuner'],['dej','Déjeuner'],['col','Collation'],['din','Dîner']];
 const ACTS=[[1.25,'Assis la plupart du temps'],[1.4,'Debout et en mouvement'],[1.55,'Travail physique']];
 const DEFS=[[0.1,'Douce (−10 %)'],[0.15,'Modérée (−15 %)'],[0.2,'Soutenue (−20 %)']];
@@ -1089,14 +1091,22 @@ const nutGuess=()=>{const h=new Date().getHours()+new Date().getMinutes()/60;ret
 const r0=v=>Math.round(+v||0),r1=v=>Math.round((+v||0)*10)/10;
 function nutW(d){const ps=S.nut.poids.filter(p=>p.date<=d).sort((a,b)=>a.date.localeCompare(b.date));return ps.length?ps[ps.length-1].kg:(+S.nut.profil.poids||80)}
 function sessKcal(s,w){if(s.kcal)return{k:+s.kcal,est:false};const m=s.sport==='velo'&&/tempo|bloc/.test(normz((s.titre||'')+' '+(s.cible||'')))?8:(MET[s.sport]||4);return{k:Math.max(0,m-1)*w*((s.duree||0)/60),est:true}}
+const gOk=g=>g&&g.total!=null&&!g.partiel&&((g.pas||0)>=2500||(g.actives||0)>=150);
+function nutEst(d,useDone){const p=S.nut.profil,w=nutW(d),h=+p.taille||168;const bmr=10*w+6.25*h-5*p.age+(p.sexe==='h'?5:-161),base=bmr*(+p.activite||1.4);
+  const done=S.ss.filter(s=>s.date===d),plan=!useDone&&d>=today()?S.plan.filter(x=>x.date===d&&x.statut==='prevue'):[];
+  return base+(done.length?done:plan).reduce((a,s)=>a+sessKcal(s,w).k,0)}
+function gCalib(){const G=(S.nut&&S.nut.garmin)||{},lim=iso(add(new Date(),-28)),rs=[];for(const[d,g]of Object.entries(G)){if(d>=lim&&d<today()&&gOk(g)){const e=nutEst(d,true);if(e>0)rs.push(g.total/e)}}
+  if(rs.length<5)return{k:1,n:rs.length};rs.sort((a,b)=>a-b);const med=rs[Math.floor(rs.length/2)];return{k:Math.min(1.15,Math.max(0.85,med)),n:rs.length}}
 function nutNeeds(d){const p=S.nut.profil;if(!p.sexe||!p.age)return null;const w=nutW(d),h=+p.taille||168;
   const bmr=10*w+6.25*h-5*p.age+(p.sexe==='h'?5:-161),base=bmr*(+p.activite||1.4);
   const done=S.ss.filter(s=>s.date===d),plan=d>=today()?S.plan.filter(x=>x.date===d&&x.statut==='prevue'):[];
   const items=(done.length?done:plan).map(s=>({t:s.titre||SP[s.sport]?.[0]||'Séance',...sessKcal(s,w)}));
-  const sport=items.reduce((a,x)=>a+x.k,0),maint=base+sport,floor=Math.max(bmr,p.sexe==='h'?1500:1200);
+  const g=(S.nut.garmin||{})[d],cal=gCalib();let sport=items.reduce((a,x)=>a+x.k,0),maint=(base+sport)*cal.k,src=cal.k!==1?'calib':'est';
+  if(d<today()&&gOk(g)){maint=g.total;sport=g.actives||0;src='garmin'}
+  const floor=Math.max(bmr,p.sexe==='h'?1500:1200);
   let cible=maint*(1-(+p.deficit||0.15)),clamped=false;if(cible<floor){cible=floor;clamped=true}
   const prot=1.8*w,lip=0.8*w,gluc=Math.max(0,(cible-prot*4-lip*9)/4);
-  return{w,bmr,base,sport,items,plan:!done.length&&plan.length>0,maint,cible,clamped,prot,lip,gluc,deficit:maint-cible}}
+  return{w,bmr,base,sport,items,plan:!done.length&&plan.length>0,maint,cible,clamped,prot,lip,gluc,deficit:maint-cible,src,cal,g}}
 function dayTot(d){return S.nut.repas.filter(m=>m.date===d&&m.etat!=='attente').reduce((a,m)=>({kcal:a.kcal+(+m.kcal||0),prot:a.prot+(+m.prot||0),gluc:a.gluc+(+m.gluc||0),lip:a.lip+(+m.lip||0)}),{kcal:0,prot:0,gluc:0,lip:0})}
 function trend(){const ps=[...S.nut.poids].sort((a,b)=>a.date.localeCompare(b.date));if(ps.length<2)return null;
   const avg=(end)=>{const a=iso(add(pd(end),-6)),xs=ps.filter(p=>p.date>=a&&p.date<=end);return xs.length?xs.reduce((s,p)=>s+p.kg,0)/xs.length:null};
@@ -1109,11 +1119,13 @@ function renderNut(){if(!S.nut)return;const d=S.nd||today(),p=S.nut.profil,N=nut
     const bar=(l,v,t,c)=>`<div class="mb"><div class="mbh"><span>${l}</span><b>${r0(v)} / ${r0(t)} g</b></div><div class="mbt"><i style="width:${Math.min(100,v/t*100)}%;background:${c}"></i></div></div>`;
     $('#nsum').innerHTML=`<div class="nring"><svg viewBox="0 0 140 140" class="ring"><circle cx="70" cy="70" r="${R}" class="rbg"/><circle cx="70" cy="70" r="${R}" class="rfg${over?' over':''}" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pc)}" transform="rotate(-90 70 70)"/></svg>
       <div class="rtx"><b>${r0(Math.abs(left))}</b><span>${over?'kcal au-dessus':'kcal restantes'}</span></div></div>
-      <div class="nfig"><div><span>Objectif</span><b>${r0(N.cible)}</b></div><div><span>Mangé</span><b>${r0(T.kcal)}</b></div><div><span>Sport</span><b>${r0(N.sport)}</b></div></div>
+      <div class="nfig"><div><span>Objectif</span><b>${r0(N.cible)}</b></div><div><span>Mangé</span><b>${r0(T.kcal)}</b></div><div><span>${N.src==='garmin'?'Actives (Garmin)':'Sport'}</span><b>${r0(N.sport)}</b></div></div>
+      ${N.g&&N.g.total!=null?`<div class="gline${gOk(N.g)||N.g.partiel?'':' warn'}">${N.g.partiel?`Garmin jusqu’ici : ${r0(N.g.total)} kcal, ${N.g.pas??0} pas`:`Garmin : ${r0(N.g.total)} kcal dépensées, ${N.g.pas??'–'} pas${gOk(N.g)?` · bilan ${T.kcal?((T.kcal-N.g.total)>0?'+':'')+r0(T.kcal-N.g.total)+' kcal':'non calculé'}`:' · montre peut-être peu portée, dépense sous-estimée'}`}</div>`:''}
       ${bar('Protéines',T.prot,N.prot,'var(--acc)')}${bar('Glucides',T.gluc,N.gluc,'var(--velo)')}${bar('Lipides',T.lip,N.lip,'var(--mobilite)')}
       <details class="lv-info" style="margin-top:12px"><summary>Comment l’objectif est calculé</summary><ul>
         <li>Métabolisme de base : ${r0(N.bmr)} kcal (${r1(N.w)} kg).</li><li>Vie quotidienne (× ${p.activite}) : ${r0(N.base)} kcal.</li>
         <li>Séances ${N.plan?'prévues':'du jour'} : ${r0(N.sport)} kcal${N.items.length?' ('+N.items.map(x=>esc(x.t)+' '+r0(x.k)).join(', ')+')':''}${N.items.some(x=>x.est)?', estimation':''}.</li>
+        ${N.src==='garmin'?`<li><b>Dépense mesurée par Garmin :</b> ${r0(N.g.total)} kcal (dont ${r0(N.g.actives)} actives, ${N.g.pas??'–'} pas). Elle remplace l’estimation.</li>`:N.src==='calib'?`<li><b>Calibré sur Garmin :</b> estimation × ${String(Math.round(N.cal.k*100)/100).replace('.',',')}, d’après ${N.cal.n} jours mesurés.</li>`:'<li>Pas encore assez de jours Garmin fiables pour calibrer (il en faut 5).</li>'}
         <li>Maintien : ${r0(N.maint)} kcal, déficit de sèche ${Math.round((+p.deficit||0.15)*100)} % : −${r0(N.deficit)} kcal.</li>
         <li>Protéines 1,8 g/kg, lipides 0,8 g/kg, le reste en glucides.</li>${N.clamped?'<li><b>Plancher atteint :</b> l’objectif ne descend pas sous ton métabolisme de base.</li>':''}</ul></details>`}
   const list=S.nut.repas.filter(m=>m.date===d);
@@ -1123,7 +1135,7 @@ function renderNut(){if(!S.nut)return;const d=S.nd||today(),p=S.nut.profil,N=nut
   $('#nrecent').innerHTML=rec.length?rec.map((m,i)=>`<button class="chip" data-rec="${esc(m.id)}">${esc(m.nom)} · ${r0(m.kcal)}</button>`).join(''):'<span class="muted">Tes repas récents apparaîtront ici pour les ajouter en un geste.</span>';
   // semaine
   const days=[...Array(7)].map((_,i)=>iso(add(pd(d),i-6)));const vals=days.map(x=>({d:x,k:dayTot(x).kcal,c:(nutNeeds(x)||{}).cible||0}));const mx=Math.max(1,...vals.map(v=>Math.max(v.k,v.c)));
-  $('#nweek').innerHTML=`<div class="nwb">${vals.map(v=>`<div class="nwc" title="${fdate(v.d)}"><div class="nwt">${v.c?`<i class="tg" style="bottom:${v.c/mx*100}%"></i>`:''}<i class="kc${v.c&&v.k>v.c?' over':''}" style="height:${v.k/mx*100}%"></i></div><span>${JOURS[(pd(v.d).getDay()+6)%7].slice(0,1)}</span></div>`).join('')}</div><p class="muted" style="margin:6px 0 0">Barres : mangé · trait : objectif. Moyenne ${r0(vals.filter(v=>v.k).reduce((a,v)=>a+v.k,0)/(vals.filter(v=>v.k).length||1))} kcal sur les jours renseignés.</p>`;
+  $('#nweek').innerHTML=`<div class="nwb">${vals.map(v=>`<div class="nwc" title="${fdate(v.d)}"><div class="nwt">${v.c?`<i class="tg" style="bottom:${v.c/mx*100}%"></i>`:''}<i class="kc${v.c&&v.k>v.c?' over':''}" style="height:${v.k/mx*100}%"></i></div><span>${JOURS[(pd(v.d).getDay()+6)%7].slice(0,1)}</span></div>`).join('')}</div>${(()=>{const xs=days.filter(x=>x<today()&&dayTot(x).kcal>0&&gOk((S.nut.garmin||{})[x]));if(!xs.length)return'';const b=xs.reduce((a,x)=>a+dayTot(x).kcal-S.nut.garmin[x].total,0)/xs.length;return`<div class="gline">Bilan moyen avec Garmin : ${b>0?'+':''}${r0(b)} kcal/jour sur ${xs.length} jour${xs.length>1?'s':''} mesuré${xs.length>1?'s':''} et renseigné${xs.length>1?'s':''}.</div>`})()}<p class="muted" style="margin:6px 0 0">Barres : mangé · trait : objectif. Moyenne ${r0(vals.filter(v=>v.k).reduce((a,v)=>a+v.k,0)/(vals.filter(v=>v.k).length||1))} kcal sur les jours renseignés.</p>`;
   // poids
   const ps=[...S.nut.poids].sort((a,b)=>a.date.localeCompare(b.date)),tr=trend(),w=nutW(today());
   let msg='';if(tr&&tr.rate!=null){const pct=tr.rate/w*100;msg=pct<-1?'Perte rapide (plus de 1 % par semaine) : remonte un peu les calories pour protéger tes séances et ta récupération.':pct<-0.3?'Bon rythme de sèche : entre 0,3 et 1 % par semaine.':pct<=0.2?'Poids stable : si ça dure 2 semaines, baisse l’objectif d’environ 100 kcal.':'Le poids remonte : vérifie que tous les repas sont bien notés.'}
@@ -1198,7 +1210,7 @@ $('#ximp').onclick=()=>{const t=$('#xin').value.trim();if(!t)return;try{$('#xres
 window.appBack=()=>{if($('#live').classList.contains('on')){$('#live').classList.remove('on');awake(false);renderBan();return true}const o=$$('.ov.on');if(o.length){o.forEach(x=>x.classList.remove('on'));return true}if(location.hash&&location.hash!=='#accueil'){location.hash='#accueil';return true}return false};
 local=true;
 let lsOk=true;try{localStorage.setItem('carnet.test','1');localStorage.removeItem('carnet.test')}catch(e){lsOk=false}
-S.nut=(()=>{const n=LS.get('nut',null)||JSON.parse(JSON.stringify(NDEF));n.profil={...NDEF.profil,...n.profil};n.repas=n.repas||[];n.poids=n.poids||[];return n})();prunePhotos();
+S.nut=(()=>{const n=LS.get('nut',null)||JSON.parse(JSON.stringify(NDEF));n.profil={...NDEF.profil,...n.profil};n.repas=n.repas||[];n.poids=n.poids||[];n.garmin=n.garmin||{};return n})();prunePhotos();
 if(LS.get('init',null)===null&&window.SEED){const z=window.SEED;S.ss=z.seances||[];S.days=z.jours||{};S.plan=z.plan||[];S.routines=z.routines||[];S.profil={...DEF,...(z.profil||{})};persistLocal();LS.set('init',new Date().toISOString())}
 else{S.ss=LS.get('ss',[]);S.days=LS.get('days',{});S.profil={...DEF,...LS.get('profil',DEF)};S.plan=LS.get('plan',[]);S.routines=LS.get('routines',[]);S.bilan=LS.get('bilan',null)}
 S.loaded=true;
