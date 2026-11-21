@@ -14,6 +14,15 @@ import android.util.Base64;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import androidx.core.content.FileProvider;
+import android.content.SharedPreferences;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.io.File;
 import java.io.FileOutputStream;
 import android.os.Vibrator;
@@ -181,6 +190,62 @@ public class MainActivity extends Activity {
                     share(text);
                 }
             });
+        }
+
+        // Analyse automatique des photos de repas avec l'API Claude (clé de l'utilisateur, gardée sur le téléphone).
+        private SharedPreferences prefs() { return getSharedPreferences("carnet", MODE_PRIVATE); }
+
+        @JavascriptInterface
+        public boolean hasKey() { return prefs().getString("apiKey", "").length() > 0; }
+
+        @JavascriptInterface
+        public void setKey(String key) { prefs().edit().putString("apiKey", key == null ? "" : key.trim()).apply(); }
+
+        @JavascriptInterface
+        public void analyze(final String id, final String dataUrl, final String prompt) {
+            final String key = prefs().getString("apiKey", "");
+            new Thread(() -> {
+                String text = "", err = "";
+                try {
+                    if (key.isEmpty()) throw new Exception("Aucune clé API enregistrée.");
+                    String b64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                    JSONObject img = new JSONObject().put("type", "image").put("source",
+                            new JSONObject().put("type", "base64").put("media_type", "image/jpeg").put("data", b64));
+                    JSONObject txt = new JSONObject().put("type", "text").put("text", prompt);
+                    JSONObject body = new JSONObject().put("model", "claude-sonnet-5-5").put("max_tokens", 500)
+                            .put("messages", new JSONArray().put(new JSONObject().put("role", "user")
+                                    .put("content", new JSONArray().put(img).put(txt))));
+                    HttpURLConnection c = (HttpURLConnection) new URL("https://api.anthropic.com/v1/messages").openConnection();
+                    c.setRequestMethod("POST");
+                    c.setConnectTimeout(20000);
+                    c.setReadTimeout(60000);
+                    c.setDoOutput(true);
+                    c.setRequestProperty("content-type", "application/json");
+                    c.setRequestProperty("x-api-key", key);
+                    c.setRequestProperty("anthropic-version", "2023-06-01");
+                    try (OutputStream os = c.getOutputStream()) { os.write(body.toString().getBytes(StandardCharsets.UTF_8)); }
+                    int code = c.getResponseCode();
+                    InputStream is = code < 400 ? c.getInputStream() : c.getErrorStream();
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                    byte[] buf = new byte[8192]; int n;
+                    while (is != null && (n = is.read(buf)) > 0) bo.write(buf, 0, n);
+                    String resp = bo.toString("UTF-8");
+                    if (code >= 400) {
+                        String msg = resp;
+                        try { msg = new JSONObject(resp).getJSONObject("error").getString("message"); } catch (Exception ignored) { }
+                        throw new Exception((code == 401 ? "Clé API refusée. " : "Erreur " + code + ". ") + msg);
+                    }
+                    JSONArray content = new JSONObject(resp).getJSONArray("content");
+                    for (int i = 0; i < content.length(); i++) {
+                        JSONObject part = content.getJSONObject(i);
+                        if ("text".equals(part.optString("type"))) text += part.optString("text");
+                    }
+                } catch (Exception e) {
+                    err = e.getMessage() == null ? "Erreur réseau." : e.getMessage();
+                }
+                final String js = "window.onAnalyse&&window.onAnalyse(" + JSONObject.quote(id) + "," + JSONObject.quote(text) + "," + JSONObject.quote(err) + ")";
+                runOnUiThread(() -> web.evaluateJavascript(js, null));
+            }).start();
         }
 
         @JavascriptInterface

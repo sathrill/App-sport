@@ -357,6 +357,7 @@ nav a{opacity:.6}nav a.on{opacity:1;background:transparent;color:var(--acc)}
   <div class="chips" id="nrecent" style="margin-top:10px"></div>
   <div id="nmeals"></div>
   <div class="card fl xbox"><h3>Coller l’estimation de Claude</h3><textarea id="nin" rows="2" placeholder="Colle ici la ligne CARNET-REPAS envoyée par Claude"></textarea><div class="row" style="margin-top:8px"><button class="btn f" id="nimp">Enregistrer</button><button class="btn" id="nfree">Saisie libre</button></div></div>
+  <details class="card fl" id="nkeyc"><summary style="font-weight:600;min-height:32px;cursor:pointer">Analyse automatique des photos</summary><div id="nkeyb"></div></details>
   <div class="sec"><h2>Semaine</h2><div class="card" id="nweek"></div></div>
   <div class="sec"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="flex:1">Poids</h2><div class="row"><input type="text" id="nkg" inputmode="decimal" placeholder="kg" style="width:6em" aria-label="Poids en kg"><button class="btn f" id="nkgok">Ajouter la pesée</button></div></div><div class="card" id="nweight"></div></div>
   <details class="card fl" id="nset"><summary style="font-weight:600;min-height:32px;cursor:pointer">Mon objectif de sèche</summary>
@@ -629,7 +630,7 @@ const SUG=['Que faire demain ?','Prépare ma semaine','Ma charge est-elle raison
 function exportText(){const r=S.xr||30,since=r==='tout'?'0000-00-00':iso(add(new Date(),-r));
   const data={v:1,app:'carnet',exporte:new Date().toISOString(),depuis:r==='tout'?null:since,seances:S.ss.filter(s=>s.date>=since),jours:Object.fromEntries(Object.entries(S.days).filter(([d])=>d>=since)),plan:S.plan.filter(p=>p.date>=since),profil:S.profil};
   if(r==='tout')data.routines=S.routines;
-  if(S.nut){const ds=[...new Set(S.nut.repas.filter(m=>m.date>=since&&m.etat!=='attente').map(m=>m.date))].sort();data.nutrition={profil:S.nut.profil,poids:S.nut.poids.filter(p=>p.date>=since),jours:ds.map(d=>{const t=dayTot(d),n=nutNeeds(d);return{date:d,kcal:Math.round(t.kcal),prot:Math.round(t.prot),gluc:Math.round(t.gluc),lip:Math.round(t.lip),objectif:n?Math.round(n.cible):null,repas:S.nut.repas.filter(m=>m.date===d&&m.etat!=='attente').map(m=>m.nom+' '+Math.round(m.kcal))}})}}
+  if(S.nut){const ds=[...new Set(S.nut.repas.filter(m=>m.date>=since&&(m.etat||'ok')==='ok').map(m=>m.date))].sort();data.nutrition={profil:S.nut.profil,poids:S.nut.poids.filter(p=>p.date>=since),jours:ds.map(d=>{const t=dayTot(d),n=nutNeeds(d);return{date:d,kcal:Math.round(t.kcal),prot:Math.round(t.prot),gluc:Math.round(t.gluc),lip:Math.round(t.lip),objectif:n?Math.round(n.cible):null,repas:S.nut.repas.filter(m=>m.date===d&&(m.etat||'ok')==='ok').map(m=>m.nom+' '+Math.round(m.kcal))}})}}
   return {n:data.seances.length,txt:`Voici mon carnet d’entraînement (export du ${fdate(today())}, ${r==='tout'?'tout l’historique':r+' derniers jours'}). Analyse-le et, si tu modifies mon programme, réponds avec un code CARNET-IMPORT.\nCARNET-EXPORT:${JSON.stringify(data)}`}}
 function renderEchange(){
   $('#xr').innerHTML=[[14,'14 jours'],[30,'30 jours'],['tout','Tout']].map(([v,l])=>`<button class="chip${(S.xr||30)===v?' on':''}" data-xr="${v}">${l}</button>`).join('');
@@ -1078,7 +1079,7 @@ $('#live').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if
 $('#lvban').addEventListener('click',e=>{const b=e.target.closest('[data-lv]');if(!b||!L)return;if(b.dataset.lv==='resume'){$('#live').classList.add('on');if(!L.paused)awake(true);lvRender()}else if(b.dataset.lv==='abandon'){if(Date.now()-lvArm>3000){lvArm=Date.now();toast('Touche encore Abandonner pour confirmer.');return}lvClear()}});
 $('#flive').onclick=()=>{const sp=cur.sport||'autre',t=$('#f-titre').value.trim()||SP[sp][0];$('#fov').classList.remove('on');lvOpen({sport:sp,titre:t,duree:null,contenu:'',ctx:'libre'});if(!L.startedAt)lvStart()};
 $('#live').addEventListener('change',e=>{if(e.target.id==='lvkg'&&L){const v=parseFloat(String(e.target.value).replace(',','.'));if(isFinite(v)&&v>=0){L.kg[L.i]=Math.round(v*2)/2;saveL()}e.target.value=String(L.kg[L.i]??0).replace('.',',')}});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&L){lvTick();if($('#live').classList.contains('on'))lvRender()}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)processQueue();if(!document.hidden&&L){lvTick();if($('#live').classList.contains('on'))lvRender()}});
 
 /* ---------- nutrition (sèche) ---------- */
 const NDEF={profil:{sexe:'',age:null,taille:168,poids:80,objectif:null,deficit:0.15,activite:1.4},repas:[],poids:[],garmin:{}};
@@ -1107,7 +1108,7 @@ function nutNeeds(d){const p=S.nut.profil;if(!p.sexe||!p.age)return null;const w
   let cible=maint*(1-(+p.deficit||0.15)),clamped=false;if(cible<floor){cible=floor;clamped=true}
   const prot=1.8*w,lip=0.8*w,gluc=Math.max(0,(cible-prot*4-lip*9)/4);
   return{w,bmr,base,sport,items,plan:!done.length&&plan.length>0,maint,cible,clamped,prot,lip,gluc,deficit:maint-cible,src,cal,g}}
-function dayTot(d){return S.nut.repas.filter(m=>m.date===d&&m.etat!=='attente').reduce((a,m)=>({kcal:a.kcal+(+m.kcal||0),prot:a.prot+(+m.prot||0),gluc:a.gluc+(+m.gluc||0),lip:a.lip+(+m.lip||0)}),{kcal:0,prot:0,gluc:0,lip:0})}
+function dayTot(d){return S.nut.repas.filter(m=>m.date===d&&(m.etat||'ok')==='ok').reduce((a,m)=>({kcal:a.kcal+(+m.kcal||0),prot:a.prot+(+m.prot||0),gluc:a.gluc+(+m.gluc||0),lip:a.lip+(+m.lip||0)}),{kcal:0,prot:0,gluc:0,lip:0})}
 function trend(){const ps=[...S.nut.poids].sort((a,b)=>a.date.localeCompare(b.date));if(ps.length<2)return null;
   const avg=(end)=>{const a=iso(add(pd(end),-6)),xs=ps.filter(p=>p.date>=a&&p.date<=end);return xs.length?xs.reduce((s,p)=>s+p.kg,0)/xs.length:null};
   const last=ps[ps.length-1].date,a1=avg(last),a0=avg(iso(add(pd(last),-14)));if(a1==null||a0==null)return{avg:a1};return{avg:a1,rate:(a1-a0)/2}}
@@ -1129,9 +1130,9 @@ function renderNut(){if(!S.nut)return;const d=S.nd||today(),p=S.nut.profil,N=nut
         <li>Maintien : ${r0(N.maint)} kcal, déficit de sèche ${Math.round((+p.deficit||0.15)*100)} % : −${r0(N.deficit)} kcal.</li>
         <li>Protéines 1,8 g/kg, lipides 0,8 g/kg, le reste en glucides.</li>${N.clamped?'<li><b>Plancher atteint :</b> l’objectif ne descend pas sous ton métabolisme de base.</li>':''}</ul></details>`}
   const list=S.nut.repas.filter(m=>m.date===d);
-  $('#nmeals').innerHTML=TYPES.map(([k,l])=>{const xs=list.filter(m=>m.type===k),tot=xs.filter(m=>m.etat!=='attente').reduce((a,m)=>a+(+m.kcal||0),0);
-    return`<div class="mg"><div class="mgh"><b>${l}</b><span>${tot?r0(tot)+' kcal':''}</span></div>${xs.map(m=>`<button class="meal${m.etat==='attente'?' wait':''}" data-meal="${esc(m.id)}">${m.photo?`<img src="${m.photo}" alt="">`:`<span class="mi">${esc((m.nom||'?').slice(0,1).toUpperCase())}</span>`}<span class="mt2"><b>${esc(m.nom||'Repas')}</b><small>${m.etat==='attente'?'En attente de l’estimation':`${r0(m.prot)} g prot · ${r0(m.gluc)} g gluc · ${r0(m.lip)} g lip${m.confiance?' · confiance '+esc(m.confiance):''}`}</small></span><span class="mk">${m.etat==='attente'?'…':r0(m.kcal)}</span></button>`).join('')}<button class="btn madd" data-addt="${k}">+ Ajouter</button></div>`}).join('');
-  const rec=[];for(const m of [...S.nut.repas].reverse()){if(m.etat==='attente'||rec.some(x=>x.nom===m.nom))continue;rec.push(m);if(rec.length>=8)break}
+  $('#nmeals').innerHTML=TYPES.map(([k,l])=>{const xs=list.filter(m=>m.type===k),tot=xs.filter(m=>(m.etat||'ok')==='ok').reduce((a,m)=>a+(+m.kcal||0),0);
+    return`<div class="mg"><div class="mgh"><b>${l}</b><span>${tot?r0(tot)+' kcal':''}</span></div>${xs.map(m=>`<button class="meal${m.etat!=='ok'&&m.etat?' wait':''}" data-meal="${esc(m.id)}">${m.photo?`<img src="${m.photo}" alt="">`:`<span class="mi">${esc((m.nom||'?').slice(0,1).toUpperCase())}</span>`}<span class="mt2"><b>${esc(m.nom||'Repas')}</b><small>${m.etat==='analyse'?'Analyse en cours…':m.etat==='attente'?(m.auto?'Analyse dès le retour du réseau':'En attente de l’estimation'):`${r0(m.prot)} g prot · ${r0(m.gluc)} g gluc · ${r0(m.lip)} g lip${m.confiance?' · confiance '+esc(m.confiance):''}`}</small></span><span class="mk">${m.etat&&m.etat!=='ok'?'…':r0(m.kcal)}</span></button>`).join('')}<button class="btn madd" data-addt="${k}">+ Ajouter</button></div>`}).join('');
+  const rec=[];for(const m of [...S.nut.repas].reverse()){if((m.etat||'ok')!=='ok'||rec.some(x=>x.nom===m.nom))continue;rec.push(m);if(rec.length>=8)break}
   $('#nrecent').innerHTML=rec.length?rec.map((m,i)=>`<button class="chip" data-rec="${esc(m.id)}">${esc(m.nom)} · ${r0(m.kcal)}</button>`).join(''):'<span class="muted">Tes repas récents apparaîtront ici pour les ajouter en un geste.</span>';
   // semaine
   const days=[...Array(7)].map((_,i)=>iso(add(pd(d),i-6)));const vals=days.map(x=>({d:x,k:dayTot(x).kcal,c:(nutNeeds(x)||{}).cible||0}));const mx=Math.max(1,...vals.map(v=>Math.max(v.k,v.c)));
@@ -1140,9 +1141,14 @@ function renderNut(){if(!S.nut)return;const d=S.nd||today(),p=S.nut.profil,N=nut
   const ps=[...S.nut.poids].sort((a,b)=>a.date.localeCompare(b.date)),tr=trend(),w=nutW(today());
   let msg='';if(tr&&tr.rate!=null){const pct=tr.rate/w*100;msg=pct<-1?'Perte rapide (plus de 1 % par semaine) : remonte un peu les calories pour protéger tes séances et ta récupération.':pct<-0.3?'Bon rythme de sèche : entre 0,3 et 1 % par semaine.':pct<=0.2?'Poids stable : si ça dure 2 semaines, baisse l’objectif d’environ 100 kcal.':'Le poids remonte : vérifie que tous les repas sont bien notés.'}
   $('#nweight').innerHTML=`<div class="nfig"><div><span>Dernière pesée</span><b>${ps.length?r1(ps[ps.length-1].kg)+' kg':'–'}</b></div><div><span>Moyenne 7 j</span><b>${tr&&tr.avg?r1(tr.avg)+' kg':'–'}</b></div><div><span>Rythme</span><b>${tr&&tr.rate!=null?(tr.rate>0?'+':'')+r1(tr.rate)+' kg/sem':'–'}</b></div></div>${msg?`<p style="margin:10px 0 0">${msg}</p>`:''}${p.objectif?`<p class="muted" style="margin:6px 0 0">Objectif : ${r1(p.objectif)} kg, encore ${r1(Math.max(0,w-p.objectif))} kg.</p>`:''}<div class="fig" id="nwfig" style="min-height:150px;margin-top:8px"><svg id="nwsvg"></svg></div>`;
-  drawW();
+  drawW();renderKey();
   // réglages
   if(!document.activeElement||!document.activeElement.closest('#nset')){$('#ns-sexe').value=p.sexe||'';$('#ns-age').value=p.age||'';$('#ns-taille').value=p.taille||'';$('#ns-poids').value=p.poids||'';$('#ns-obj').value=p.objectif||'';$('#ns-act').value=p.activite;$('#ns-def').value=p.deficit}}
+function renderKey(){const el=$('#nkeyb');if(!el)return;const app=!!(window.Android&&Android.setKey);
+  el.innerHTML=!app?'<p class="muted">Disponible dans l’app Android : chaque photo y est analysée automatiquement.</p>':`<p style="margin:8px 0">${hasKey()?'<b>Clé enregistrée sur ce téléphone.</b> Chaque photo est analysée automatiquement, et celles prises hors ligne le seront au retour du réseau.':'Avec ta propre clé API Claude, chaque photo est analysée automatiquement, sans passer par l’app Claude.'}</p>
+   <label for="nkey">${hasKey()?'Remplacer la clé':'Clé API'}</label><input type="password" id="nkey" autocomplete="off" placeholder="sk-ant-…">
+   <div class="row" style="margin-top:8px"><button class="btn p" id="nkeyok">Enregistrer la clé</button>${hasKey()?'<button class="btn" id="nkeydel">Supprimer la clé</button>':''}</div>
+   <p class="muted" style="margin:8px 0 0">La clé se crée sur console.anthropic.com (compte et facturation séparés de l’abonnement Claude). Compte environ un demi-centime par photo ; fixe une limite de dépense dans la console. La clé reste dans le stockage privé de l’app, jamais dans les exports.</p>`}
 function drawW(){const s=$('#nwsvg');if(!s)return;const W=s.clientWidth,H=s.clientHeight;const ps=[...S.nut.poids].sort((a,b)=>a.date.localeCompare(b.date)).slice(-60);if(!W||ps.length<2){s.innerHTML=ps.length?'':`<text x="8" y="20">Ajoute des pesées pour voir la courbe.</text>`;return}
   const t0=pd(ps[0].date),t1=pd(ps[ps.length-1].date),span=Math.max(1,(t1-t0)/864e5),ks=ps.map(p=>p.kg),lo=Math.floor(Math.min(...ks)-0.5),hi=Math.ceil(Math.max(...ks)+0.5);
   const x=d=>30+(pd(d)-t0)/864e5/span*(W-40),y=k=>8+(hi-k)/(hi-lo)*(H-28);
@@ -1160,14 +1166,29 @@ function renderFoods(){const q=normz($('#fq').value),F=window.FOODS||[];const xs
   $('#flist').innerHTML=xs.map((f,i)=>`<button class="item" data-food="${F.indexOf(f)}"><span><h3 style="font-size:17px">${esc(f[0])}</h3><p>${r0(f[1]*f[5]/100)} kcal pour ${esc(f[6])} (${f[5]} g)</p></span><span class="tag">${f[1]} kcal/100 g</span></button>`).join('')||'<p class="muted">Aucun aliment trouvé : utilise la saisie libre.</p>'}
 function openFree(m){nutEdit=m?m.id:null;$('#mtitle').textContent=m?(m.etat==='attente'?'Estimer ce plat':'Modifier le repas'):'Saisie libre';
   $('#mphoto').innerHTML=m&&m.photo?`<img src="${m.photo}" alt="" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">`:'';
-  $('#m-nom').value=m&&m.etat!=='attente'?m.nom||'':'';for(const k of['kcal','prot','gluc','lip'])$('#m-'+k).value=m&&m.etat!=='attente'?r0(m[k]):'';
+  $('#m-nom').value=m&&(m.etat||'ok')==='ok'?m.nom||'':'';for(const k of['kcal','prot','gluc','lip'])$('#m-'+k).value=m&&(m.etat||'ok')==='ok'?r0(m[k]):'';
   $('#m-type').innerHTML=TYPES.map(([k,l])=>`<option value="${k}"${(m?m.type:nutGuess())===k?' selected':''}>${l}</option>`).join('');
-  $('#mdel').hidden=!m;$('#mdel').dataset.arm='';$('#mdel').textContent='Supprimer';$('#mclaude').hidden=!(m&&m.photoM);$('#mov').classList.add('on')}
+  $('#mdel').hidden=!m;$('#mdel').dataset.arm='';$('#mdel').textContent='Supprimer';$('#mclaude').hidden=!(m&&m.photoM&&m.etat!=='ok');$('#mclaude').textContent=hasKey()?'Analyser maintenant':'Envoyer la photo à Claude pour estimation';
+  if(m&&m.incertitude&&m.etat==='ok')$('#mphoto').insertAdjacentHTML('beforeend',`<p class="muted" style="margin:8px 0 0">Estimation ${esc(m.confiance||'')} · ${esc(m.incertitude)}</p>`);$('#mov').classList.add('on')}
 async function photoPicked(file){if(!file)return;try{const img=await new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=u});
   const scale=(mx,q)=>{const r=Math.min(1,mx/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q)};
   const m={id:'m'+Date.now().toString(36),date:S.nd||today(),type:nutGuess(),etat:'attente',nom:'Plat en photo',photo:scale(180,0.6),photoM:scale(900,0.75),heure:new Date().toTimeString().slice(0,5)};
-  S.nut.repas.push(m);try{nutSave()}catch(e){delete m.photoM;nutSave()}renderNut();openFree(m)}catch(e){toast('Photo illisible.')}}
+  S.nut.repas.push(m);try{nutSave()}catch(e){delete m.photoM;nutSave()}renderNut();if(!analyzeEntry(m))openFree(m)}catch(e){toast('Photo illisible.')}}
 function claudePrompt(m){return`Estime les calories et les macronutriments de ce plat (photo jointe), pour la portion visible. Réponds d’abord par une seule ligne exactement au format suivant :\nCARNET-REPAS:{"id":"${m.id}","nom":"…","kcal":0,"prot":0,"gluc":0,"lip":0,"portion":"…","confiance":"faible|moyenne|bonne"}\nPuis, en une phrase, ce qui rend l’estimation incertaine (huile, sauce, portion cachée).`}
+const hasKey=()=>{try{return!!(window.Android&&Android.hasKey&&Android.hasKey())}catch(e){return false}};
+function autoPrompt(){return`Tu estimes les apports d’un repas pour un carnet de suivi. Regarde la photo et estime, pour la portion visible, les calories et les macronutriments. Réponds UNIQUEMENT avec un objet JSON, sans texte autour :
+{"nom":"nom court du plat en français","kcal":0,"prot":0,"gluc":0,"lip":0,"portion":"description courte de la portion","confiance":"faible|moyenne|bonne","incertitude":"ce qui rend l’estimation incertaine, en une phrase"}
+Si la photo ne montre pas de nourriture, renvoie {"erreur":"pas de plat visible"}.`}
+function analyzeEntry(m){if(!hasKey())return false;if(!navigator.onLine){m.etat='attente';m.auto=true;nutSave();renderNut();toast('Hors ligne : la photo sera analysée dès le retour du réseau.');return true}
+  m.etat='analyse';m.auto=true;nutSave();renderNut();try{Android.analyze(m.id,m.photoM||m.photo,autoPrompt())}catch(e){m.etat='attente';nutSave();renderNut();return false}return true}
+function processQueue(){if(!S.nut||!hasKey()||!navigator.onLine)return;if(S.nut.repas.some(x=>x.etat==='analyse'))return;const m=S.nut.repas.find(x=>x.etat==='attente'&&x.auto&&(x.photoM||x.photo));if(m)analyzeEntry(m)}
+window.onAnalyse=(id,text,err)=>{const m=S.nut&&S.nut.repas.find(x=>x.id===id);if(!m)return;
+  let v=null;if(!err){try{v=JSON.parse((text.match(/\{[\s\S]*\}/)||['{}'])[0])}catch(e){err='Réponse illisible.'}}
+  if(!err&&v&&v.erreur)err='Pas de plat reconnu sur la photo.';if(!err&&!(+v.kcal>0))err='Estimation incomplète.';
+  if(err){m.etat='attente';m.auto=!/clé|key|401|Pas de plat|incompl/i.test(err);nutSave();renderNut();toast('Analyse impossible : '+err);return}
+  Object.assign(m,{nom:String(v.nom||'Repas').slice(0,80),kcal:r0(v.kcal),prot:r1(v.prot),gluc:r1(v.gluc),lip:r1(v.lip),portion:v.portion||'',confiance:v.confiance||'',incertitude:v.incertitude||'',etat:'ok',source:'claude-auto'});delete m.photoM;delete m.auto;
+  nutSave();renderNut();toast(`${m.nom} : ${m.kcal} kcal`);setTimeout(processQueue,400)};
+window.addEventListener('online',()=>processQueue());
 async function shareToClaude(m){const t=claudePrompt(m);try{if(window.Android&&Android.shareImage){Android.shareImage(m.photoM||m.photo,t);return}
   const b=await (await fetch(m.photoM||m.photo)).blob(),f=new File([b],'plat.jpg',{type:'image/jpeg'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:t});return}}catch(e){}
@@ -1196,9 +1217,12 @@ $('#nfov').addEventListener('click',e=>{const b=e.target.closest('button');if(!b
   else if(b.id==='fok'){const f=NF.food,g=+$('#fg').value||0,k=g/100;nutAdd({nom:`${f[0]} (${g} g)`,kcal:f[1]*k,prot:f[2]*k,gluc:f[3]*k,lip:f[4]*k,type:NF.type,source:'base'});$('#nfov').classList.remove('on');toast('Ajouté.')}});
 $('#fq').addEventListener('input',()=>{NF.food=null;renderFoods()});
 $('#nfov').addEventListener('change',e=>{if(e.target.id==='fg')renderFoods()});
-$('#mclaude').onclick=()=>{const m=S.nut.repas.find(x=>x.id===nutEdit);if(m)shareToClaude(m)};
+$('#mclaude').onclick=()=>{const m=S.nut.repas.find(x=>x.id===nutEdit);if(!m)return;if(hasKey()){$('#mov').classList.remove('on');analyzeEntry(m)}else shareToClaude(m)};
 $('#mok').onclick=()=>{const v={nom:$('#m-nom').value.trim()||'Repas',kcal:num($('#m-kcal').value)||0,prot:num($('#m-prot').value)||0,gluc:num($('#m-gluc').value)||0,lip:num($('#m-lip').value)||0,type:$('#m-type').value,etat:'ok'};
   if(!v.kcal){toast('Indique au moins les calories.');return}const m=nutEdit&&S.nut.repas.find(x=>x.id===nutEdit);if(m){Object.assign(m,v);delete m.photoM}else nutAdd({...v,source:'libre'});nutSave();$('#mov').classList.remove('on');renderNut()};
+$('#nkeyc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.id==='nkeyok'){const k=$('#nkey').value.trim();if(!/^sk-ant-/.test(k)){toast('Clé invalide : elle commence par sk-ant-.');return}Android.setKey(k);$('#nkey').value='';renderKey();toast('Clé enregistrée.');processQueue()}
+  else if(b.id==='nkeydel'){Android.setKey('');renderKey();toast('Clé supprimée.')}});
 $('#mdel').onclick=e=>{const b=e.currentTarget;if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Confirmer la suppression';return}S.nut.repas=S.nut.repas.filter(x=>x.id!==nutEdit);nutSave();$('#mov').classList.remove('on');renderNut()};
 
 /* ---------- démarrage ---------- */
@@ -1210,7 +1234,7 @@ $('#ximp').onclick=()=>{const t=$('#xin').value.trim();if(!t)return;try{$('#xres
 window.appBack=()=>{if($('#live').classList.contains('on')){$('#live').classList.remove('on');awake(false);renderBan();return true}const o=$$('.ov.on');if(o.length){o.forEach(x=>x.classList.remove('on'));return true}if(location.hash&&location.hash!=='#accueil'){location.hash='#accueil';return true}return false};
 local=true;
 let lsOk=true;try{localStorage.setItem('carnet.test','1');localStorage.removeItem('carnet.test')}catch(e){lsOk=false}
-S.nut=(()=>{const n=LS.get('nut',null)||JSON.parse(JSON.stringify(NDEF));n.profil={...NDEF.profil,...n.profil};n.repas=n.repas||[];n.poids=n.poids||[];n.garmin=n.garmin||{};return n})();prunePhotos();
+S.nut=(()=>{const n=LS.get('nut',null)||JSON.parse(JSON.stringify(NDEF));n.profil={...NDEF.profil,...n.profil};n.repas=n.repas||[];n.poids=n.poids||[];n.garmin=n.garmin||{};for(const m of n.repas)if(m.etat==='analyse')m.etat='attente';return n})();prunePhotos();setTimeout(processQueue,1500);
 if(LS.get('init',null)===null&&window.SEED){const z=window.SEED;S.ss=z.seances||[];S.days=z.jours||{};S.plan=z.plan||[];S.routines=z.routines||[];S.profil={...DEF,...(z.profil||{})};persistLocal();LS.set('init',new Date().toISOString())}
 else{S.ss=LS.get('ss',[]);S.days=LS.get('days',{});S.profil={...DEF,...LS.get('profil',DEF)};S.plan=LS.get('plan',[]);S.routines=LS.get('routines',[]);S.bilan=LS.get('bilan',null)}
 S.loaded=true;
