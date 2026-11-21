@@ -728,18 +728,18 @@ function profHas(re){return re.test(normz((S.profil&&S.profil.contexte)||''))}
 function coachFor(p){const k=p.sport in SP?p.sport:'autre',fc=S.profil||DEF,n=normz((p.titre||'')+' '+(p.contenu||''));
   const g={objectif:'',avant:[],pendant:[],apres:[],vigilance:[]};
   if(isRun(k)){g.objectif=`Courir facile, sans douleur, sous ${fc.fcCourse||144} bpm.`;
-    g.avant=['Dernier repas 2 à 3 h avant, léger et digeste.','Fais la routine d’activation avant de partir.','Choisis un terrain souple et peu technique.'];
+    g.avant=['Fais la routine d’activation avant de partir.','Choisis un terrain souple et peu technique.'];
     g.pendant=[`FC ≤ ${fc.fcCourse||144} : marche dès que tu dépasses, c’est prévu.`,'Pas courts et légers, pied qui se pose sous le bassin.','Écoute le pied et la cheville : au-dessus de 3/10, on arrête.'];
-    g.apres=['Bloc kiné après la course, jamais avant.','Note ton RPE et tes douleurs tout de suite.','Collation glucides + protéines dans l’heure.'];
+    g.apres=['Bloc kiné après la course, jamais avant.','Note ton RPE et tes douleurs tout de suite.'];
     if(profHas(/fasciite/))g.vigilance.push('Fasciite : demain matin, tes premiers pas sont l’indicateur. Douleur en hausse = on réduit.');
     if(profHas(/cheville/)&&k==='trail')g.vigilance.push('Cheville : regard 3 à 4 m devant, pas courts en descente.')}
   else if(k==='velo'){const long=(p.duree||0)>=100,tempo=/tempo|bloc|×|x \d/.test(n);g.objectif=tempo?'Tenir des blocs réguliers juste sous ton plafond, sans le dépasser.':`Rouler en endurance pure, FC ≤ ${fc.fcZ2||146} bpm.`;
-    g.avant=['Vérifie pneus, freins et éclairage.',long?'Petit-déjeuner riche en glucides 2 à 3 h avant.':'Repas normal 2 h avant.',long?'Prépare 2 bidons et 40 à 60 g de glucides par heure.':'Un bidon suffit.'];
-    g.pendant=tempo?['Échauffement complet avant le premier bloc.',`Blocs entre ${(fc.fcVelo||150)-4} et ${fc.fcVelo||150} bpm, jamais au-dessus.`,'Récupérations vraiment faciles, cadence souple.']:[`Reste sous ${fc.fcZ2||146} bpm, même en côte : tu dois pouvoir parler.`,'Cadence 85 à 95 tr/min, petits braquets.',long?'Mange dès la première heure, puis toutes les 20 à 30 min.':'Bois régulièrement.'];
-    g.apres=['Routine mobilité « après vélo » le soir.','Collation dans l’heure.','Note RPE et sensations.'];
-    if(long)g.vigilance.push('Sortie longue : le coup de fringale arrive si tu attends d’avoir faim pour manger.')}
+    g.avant=['Vérifie pneus, freins et éclairage.','Capteur cardio en place : la séance se pilote à la FC.'];
+    g.pendant=tempo?['Échauffement complet avant le premier bloc.',`Blocs entre ${(fc.fcVelo||150)-4} et ${fc.fcVelo||150} bpm, jamais au-dessus.`,'Récupérations vraiment faciles, cadence souple.']:[`Reste sous ${fc.fcZ2||146} bpm, même en côte : tu dois pouvoir parler.`,'Cadence 85 à 95 tr/min, petits braquets.',long?'Change régulièrement de position sur le vélo.':'Les 10 dernières minutes très faciles.'];
+    g.apres=['Routine mobilité « après vélo ».','Note RPE et sensations.'];
+    if(long)g.vigilance.push('Sortie longue : si la FC dérive vers le haut à allure constante, ralentis.')}
   else if(k==='escalade'){g.objectif=/technique|pieds/.test(n)?'Grimper propre : pieds précis et silencieux.':'Accumuler du volume en 6A–6B, en gardant les doigts frais.';
-    g.avant=['Échauffement progressif 20 min, doigts compris.','Mange 2 h avant, pas juste avant.'];
+    g.avant=['Échauffement progressif 20 min, doigts compris.'];
     g.pendant=['Main ouverte en priorité.','Repos 3 min entre deux essais durs.','Stop immédiat si douleur à un doigt.'];
     g.apres=['Renfo antagoniste si prévu, juste après.','Étire doucement avant-bras et doigts.','Note le niveau max et le nombre de blocs.'];
     if(profHas(/annulaire/))g.vigilance.push('Annulaires : évite arquées et petites réglettes, la poulie récupère lentement.')}
@@ -748,8 +748,8 @@ function coachFor(p){const k=p.sport in SP?p.sport:'autre',fc=S.profil||DEF,n=no
     g.pendant=['Descente lente (2 s), montée contrôlée.','Dernière répétition difficile mais propre : garde 1 à 2 répétitions en réserve.','Respire : expire à l’effort.'];
     g.apres=['Note les charges utilisées.','Mobilité du jour le soir.'];
     if(bas){g.vigilance.push('Pas de sauts : progression prudente du bas du corps.');g.vigilance.push('Genou dans l’axe du pied, amplitude sans douleur.')}}
-  else if(k==='natation'){g.objectif='Nager en aisance, technique avant vitesse.';g.avant=['Lunettes, bonnet, gourde.'];g.pendant=['Expire bien sous l’eau.','Allonge le bras devant, gainage pour garder les jambes hautes.'];g.apres=['Bois et mange dans l’heure.']}
-  else if(k==='rando'){g.objectif='Bouger tranquillement et récupérer.';g.avant=['Chaussures confortables, eau.'];g.pendant=['Allure où tu peux parler sans effort.'];g.apres=['Mobilité et bloc kiné au calme.']}
+  else if(k==='natation'){g.objectif='Nager en aisance, technique avant vitesse.';g.avant=['Quelques longueurs faciles pour t’échauffer.'];g.pendant=['Expire bien sous l’eau.','Allonge le bras devant, gainage pour garder les jambes hautes.'];g.apres=['Note la distance et tes sensations.']}
+  else if(k==='rando'){g.objectif='Bouger tranquillement et récupérer.';g.avant=['Chaussures confortables.'];g.pendant=['Allure où tu peux parler sans effort.'];g.apres=['Mobilité et bloc kiné au calme.']}
   else if(k==='mobilite'){g.objectif='Gagner en amplitude, au calme.';g.pendant=['Respiration lente, jamais d’à-coups.','Sensation d’étirement, jamais de douleur.']}
   const c=p.coach||{};return{objectif:c.objectif||g.objectif,avant:c.avant||g.avant,pendant:c.pendant||g.pendant,apres:c.apres||g.apres,vigilance:c.vigilance||g.vigilance,perso:!!p.coach}}
 function coachHTML(c,inner){const sec=(t,a,v)=>a&&a.length?`<h4${v?' class="v"':''}>${t}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'';
@@ -760,26 +760,24 @@ function briefHTML(d,inSheet){const ps=S.plan.filter(p=>p.date===d&&p.statut!=='
   const tot=ps.reduce((a,p)=>a+(p.duree||0),0),long=ps.some(p=>(p.duree||0)>=100),L=[];
   let titre;if(!ps.length)titre=ss.length?'Séance faite, place à la récupération':'Jour de repos';else titre=ps.map(p=>SP[p.sport in SP?p.sport:'autre'][0]).filter((x,i,a)=>a.indexOf(x)===i).join(' + ');
   const tm=(dd.brief||'').trim();if(tm)L.push(['Coach',tm]);
-  if(main){const c=coachFor(main);if(c.objectif)L.push(['Focus',c.objectif])}else L.push(['Focus','Récupérer : on bouge doucement, on dort bien.']);
+  if(main){const c=coachFor(main);if(c.objectif)L.push(['Focus',c.objectif])}else L.push(['Focus','Pas de séance : mobilité et bloc kiné au calme.']);
   if(run&&d===today())L.push(['Au réveil','Teste le pied sur tes premiers pas. Douleur au-dessus de 3/10 : remplace la course par du vélo facile.','v']);
   if(run&&bas)L.push(['Horaire','Course d’abord, renfo ensuite, idéalement à quelques heures d’écart.']);
   else if(grimpe&&ps.some(p=>p.sport==='renfo'))L.push(['Horaire','Antagonistes dans la foulée de l’escalade, même séance.']);
-  L.push(['Manger',!ps.length?'Repas équilibrés, pas besoin de surcharger en glucides.':long?'Petit-déjeuner riche en glucides, ravitaillement prêt pour la sortie.':'Repas normal, dernière prise 2 à 3 h avant la séance.']);
-  L.push(['Boire',long?'1,5 à 2 L dans la journée, plus environ 500 ml par heure de vélo.':'1,5 à 2 L dans la journée, par petites quantités.']);
   const mat=[...new Set(ps.flatMap(p=>materielFor(p.sport in SP?p.sport:'autre',p.contenu,'plan')))];if(mat.length)L.push(['Préparer',mat.slice(0,6).join(', ')+(mat.length>6?'…':'')]);
-  L.push(['Récupérer',`Bloc kiné${run?' après la course':''}${r?` + routine ${r.id} ${r.nom}`:' + une routine de mobilité'}${ps.length?' le soir':''}. Coucher régulier.`]);
+  L.push(['Mobilité',`Bloc kiné${run?' après la course':''}${r?` + routine ${r.id} ${r.nom}`:' + une routine de mobilité'}${ps.length?' en fin de journée':''}.`]);
   const tmw=iso(add(pd(d),1)),np=S.plan.filter(p=>p.date===tmw&&p.statut==='prevue').sort(byIdeal);
-  if(np.length){const n0=np[0],k0=n0.sport in SP?n0.sport:'autre';L.push(['Demain',`${n0.titre}${n0.duree?' ('+fdur(n0.duree)+')':''}${k0==='velo'&&(n0.duree||0)>=100?' : prépare bidons et ravitaillement ce soir.':isRun(k0)?' : garde les jambes fraîches ce soir.':'.'}`])}
+  if(np.length){const n0=np[0],k0=n0.sport in SP?n0.sport:'autre';L.push(['Demain',`${n0.titre}${n0.duree?' ('+fdur(n0.duree)+')':''}${k0==='velo'?' : vérifie le vélo et l’éclairage la veille.':isRun(k0)?' : pas de séance dure ce soir.':'.'}`])}
   else L.push(['Demain','Pas de séance prévue : récupération.']);
   return`<div class="brief"><h3>${inSheet?'Brief de la journée':'Brief du jour'}</h3><div class="bt">${esc(titre)}${tot?' · '+fdur(tot):''}</div>${L.map(([a,b,v])=>`<div class="bl${v?' v':''}"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>`}
 
 /* ---------- accueil : prochaine séance, objectif, conseil ---------- */
 const TIPS=['Une séance facile doit le rester : tu dois pouvoir parler en phrases complètes.',
  'Le bloc kiné se fait après la course, pas avant : un mollet fatigué protège moins le pied.',
- 'Sur le vélo au-delà d’1 h 30, mange dès la première heure : 40 à 60 g de glucides par heure.',
+ 'En côte à vélo, petit braquet et cadence souple plutôt que de forcer.',
  'Note ton RPE et tes douleurs juste après la séance : c’est ce qui permet d’ajuster le plan.',
  'Douleur au pied au-dessus de 3/10 le lendemain d’une course : reviens au volume précédent.',
- 'Le sommeil est ta meilleure récupération : garde une heure de coucher régulière.',
+ 'En renfo, garde 1 à 2 répétitions en réserve : la technique avant la charge.',
  'En escalade, privilégie la main ouverte : les poulies des annulaires récupèrent lentement.',
  'Après une course, deux ou trois jours faciles valent mieux qu’une séance intense.',
  'Échauffe-toi une dizaine de minutes avant toute séance soutenue, même à vélo.',
